@@ -201,6 +201,54 @@ footer .addr{margin-top:6px;line-height:1.7}
 .thanks .wordmark{color:var(--navy);font-size:1.05rem;margin-bottom:14px;letter-spacing:.34em}
 .thanks h2{font-size:clamp(1.7rem,4.5vw,2.4rem);font-weight:600;letter-spacing:-.025em;color:var(--navy)}
 .thanks-desc{margin:10px auto 0;color:var(--ink-2);font-size:.95rem;line-height:1.6;letter-spacing:0}
+.thanks-desc strong{color:var(--navy);font-weight:700}
+
+/* ---------- voucher preview ---------- */
+.voucher-preview{
+  width:100%;max-width:320px;border-radius:14px;
+  display:block;margin:22px auto 0;
+  box-shadow:0 16px 48px -16px rgba(10,37,64,.22);
+}
+
+/* ---------- zalo CTA ---------- */
+.btn-zalo{
+  display:flex;align-items:center;justify-content:center;gap:10px;
+  background:#0068FF;color:#fff;text-decoration:none;
+  font-size:1rem;font-weight:700;padding:15px 20px;
+  border-radius:14px;width:100%;margin-top:20px;
+  transition:background .25s var(--ease),transform .2s var(--ease),box-shadow .25s var(--ease);
+  box-shadow:0 8px 28px -8px rgba(0,104,255,.45);
+  letter-spacing:.01em;
+}
+.btn-zalo:hover{background:#0057D9;transform:translateY(-2px);box-shadow:0 14px 32px -8px rgba(0,104,255,.5)}
+.btn-zalo:active{transform:translateY(0)}
+.zalo-icon{
+  font-size:1rem;font-weight:900;font-style:italic;
+  background:#fff;color:#0068FF;
+  width:26px;height:26px;border-radius:6px;
+  display:grid;place-items:center;flex-shrink:0;
+}
+.zalo-sep{
+  display:flex;align-items:center;gap:10px;
+  margin:18px 0 0;width:100%;
+}
+.zalo-sep::before,.zalo-sep::after{
+  content:"";flex:1;height:1px;background:var(--line);
+}
+.zalo-sep span{
+  font-size:.74rem;color:var(--ink-2);letter-spacing:.08em;
+  text-transform:uppercase;white-space:nowrap;
+}
+.zalo-qr{
+  width:160px;height:160px;display:block;
+  margin:16px auto 0;border-radius:12px;
+  object-fit:cover;object-position:center;
+  box-shadow:0 4px 16px -4px rgba(0,0,0,.12);
+}
+.thanks-hint{
+  margin-top:14px;font-size:.78rem;
+  color:var(--ink-2);text-align:center;line-height:1.55;
+}
 
 /* ---------- voucher card ---------- */
 .voucher{
