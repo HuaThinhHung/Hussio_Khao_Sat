@@ -210,12 +210,52 @@ footer .addr{margin-top:6px;line-height:1.7}
   box-shadow:0 16px 48px -16px rgba(10,37,64,.22);
 }
 
+/* ---------- voucher steps ---------- */
+.voucher-steps{
+  display:flex;align-items:flex-start;justify-content:center;
+  gap:8px;margin-top:22px;width:100%;
+  background:#fff;border-radius:16px;padding:18px 14px;
+  box-shadow:0 4px 20px -8px rgba(10,37,64,.12);
+}
+.vstep{
+  display:flex;flex-direction:column;align-items:center;
+  gap:7px;flex:1;text-align:center;
+}
+.vstep-num{
+  width:30px;height:30px;border-radius:50%;
+  background:var(--navy);color:#fff;
+  font-size:.8rem;font-weight:700;
+  display:grid;place-items:center;flex-shrink:0;
+}
+.vstep-text{font-size:.74rem;color:var(--ink-2);line-height:1.45;letter-spacing:.01em}
+.vstep-text strong{color:var(--navy);font-weight:700}
+.vstep-arrow{
+  font-size:1rem;color:var(--gold);
+  padding-top:6px;flex-shrink:0;
+}
+
+/* ---------- QR card ---------- */
+.qr-card{
+  width:100%;background:#fff;border-radius:18px;
+  padding:20px 16px;margin-top:18px;
+  box-shadow:0 8px 32px -12px rgba(10,37,64,.18);
+  display:flex;flex-direction:column;align-items:center;gap:12px;
+}
+.qr-label{
+  font-size:.78rem;font-weight:600;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--ink-2);margin:0;
+}
+.zalo-qr{
+  width:220px;height:auto;display:block;
+  border-radius:10px;object-fit:contain;
+}
+
 /* ---------- zalo CTA ---------- */
 .btn-zalo{
   display:flex;align-items:center;justify-content:center;gap:10px;
   background:#0068FF;color:#fff;text-decoration:none;
-  font-size:1rem;font-weight:700;padding:15px 20px;
-  border-radius:14px;width:100%;margin-top:20px;
+  font-size:.95rem;font-weight:700;padding:14px 20px;
+  border-radius:14px;width:100%;margin-top:14px;
   transition:background .25s var(--ease),transform .2s var(--ease),box-shadow .25s var(--ease);
   box-shadow:0 8px 28px -8px rgba(0,104,255,.45);
   letter-spacing:.01em;
@@ -228,26 +268,9 @@ footer .addr{margin-top:6px;line-height:1.7}
   width:26px;height:26px;border-radius:6px;
   display:grid;place-items:center;flex-shrink:0;
 }
-.zalo-sep{
-  display:flex;align-items:center;gap:10px;
-  margin:18px 0 0;width:100%;
-}
-.zalo-sep::before,.zalo-sep::after{
-  content:"";flex:1;height:1px;background:var(--line);
-}
-.zalo-sep span{
-  font-size:.74rem;color:var(--ink-2);letter-spacing:.08em;
-  text-transform:uppercase;white-space:nowrap;
-}
-.zalo-qr{
-  width:160px;height:160px;display:block;
-  margin:16px auto 0;border-radius:12px;
-  object-fit:cover;object-position:center;
-  box-shadow:0 4px 16px -4px rgba(0,0,0,.12);
-}
 .thanks-hint{
   margin-top:14px;font-size:.78rem;
-  color:var(--ink-2);text-align:center;line-height:1.55;
+  color:var(--ink-2);text-align:center;line-height:1.6;
 }
 
 /* ---------- voucher card ---------- */
