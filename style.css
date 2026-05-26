@@ -51,17 +51,17 @@ header .count b{color:var(--navy);font-weight:600}
   background:radial-gradient(120% 90% at 50% 0%,#ffffff 0%,#ffffff 45%,#f3f4f7 100%);
   position:relative;
 }
-.hero .logo{font-size:clamp(2rem,6vw,3.4rem);color:var(--navy);margin-bottom:40px}
+.hero .logo{font-size:clamp(1.6rem,4vw,2.2rem);color:var(--navy);margin-bottom:20px}
+.hero .eyebrow{margin-top:0;margin-bottom:16px}
 .hero h1{
-  font-size:clamp(2.6rem,7.5vw,5.2rem);font-weight:600;line-height:1.04;
-  letter-spacing:-.03em;color:var(--navy);max-width:14ch;margin:0 auto;
+  font-size:clamp(3rem,8vw,5.6rem);font-weight:600;line-height:1.04;
+  letter-spacing:-.03em;color:var(--navy);margin:0 auto;
 }
-.hero .q{font-size:clamp(1.05rem,2.4vw,1.35rem);color:var(--ink-2);margin-top:20px;letter-spacing:0}
 .hero p.intro{
-  max-width:30rem;margin:30px auto 0;color:var(--ink-2);
-  font-size:clamp(1rem,2.2vw,1.18rem);line-height:1.6;letter-spacing:0;
+  max-width:28rem;margin:22px auto 0;color:var(--ink-2);
+  font-size:clamp(.98rem,2vw,1.1rem);line-height:1.65;letter-spacing:0;
 }
-.hero .meta{margin-top:26px;font-size:.9rem;color:var(--ink-2);letter-spacing:0}
+.hero .meta{margin-top:20px;font-size:.86rem;color:var(--ink-2);letter-spacing:0}
 .hero .meta span{display:inline-flex;align-items:center;gap:7px}
 .hero .meta .dot{width:4px;height:4px;border-radius:50%;background:var(--line);margin:0 14px;display:inline-block;vertical-align:middle}
 .cta{
@@ -124,19 +124,49 @@ main{position:relative}
 @keyframes shake{10%,90%{transform:translateX(-1px)}20%,80%{transform:translateX(2px)}30%,50%,70%{transform:translateX(-4px)}40%,60%{transform:translateX(4px)}}
 
 /* ---------- submit ---------- */
-.finish{background:var(--navy);color:#fff;text-align:center;padding:clamp(72px,12vw,140px) clamp(20px,5vw,40px)}
-.finish .wordmark{color:#fff;font-size:1.4rem;display:block;margin-bottom:30px;opacity:.9}
-.finish h2{font-size:clamp(1.8rem,4.5vw,2.8rem);font-weight:600;letter-spacing:-.02em;line-height:1.15;max-width:18ch;margin:0 auto}
-.finish .answered{margin-top:22px;font-size:1rem;color:rgba(255,255,255,.7);letter-spacing:0}
-.finish .answered b{color:var(--gold-soft);font-weight:600}
-.submit{
-  margin-top:40px;background:#fff;color:var(--navy);border:none;cursor:pointer;
-  font-size:1.05rem;font-weight:600;letter-spacing:0;padding:17px 46px;border-radius:980px;
-  transition:transform .35s var(--ease),box-shadow .35s var(--ease),background .35s var(--ease);
-  box-shadow:0 10px 30px -10px rgba(0,0,0,.5);
+.finish{
+  background:linear-gradient(170deg,var(--navy) 0%,var(--navy-deep) 100%);
+  color:#fff;text-align:center;
+  padding:clamp(72px,12vw,120px) clamp(20px,5vw,40px);
+  position:relative;overflow:hidden;
 }
-.submit:hover{transform:translateY(-2px);background:var(--gold);color:var(--navy);box-shadow:0 16px 40px -12px rgba(201,162,75,.6)}
+.finish::before{
+  content:"";position:absolute;top:0;left:0;right:0;height:2px;
+  background:linear-gradient(90deg,transparent 0%,var(--gold) 40%,var(--gold) 60%,transparent 100%);
+  opacity:.6;
+}
+.finish::after{
+  content:"";position:absolute;
+  bottom:-120px;right:-80px;
+  width:320px;height:320px;border-radius:50%;
+  background:radial-gradient(circle,rgba(201,162,75,.07) 0%,transparent 70%);
+  pointer-events:none;
+}
+.finish .eyebrow{display:block;margin-bottom:18px}
+.finish .wordmark{color:#fff;font-size:1.35rem;display:block;margin-bottom:22px;opacity:.85}
+.finish h2{
+  font-size:clamp(2rem,5vw,3.2rem);font-weight:600;
+  letter-spacing:-.025em;line-height:1.1;margin:0 auto;
+}
+.finish .answered{
+  margin-top:18px;font-size:.9rem;
+  color:rgba(255,255,255,.5);letter-spacing:.05em;
+}
+.finish .answered b{color:var(--gold-soft);font-weight:700;font-size:1rem}
+.submit{
+  margin-top:34px;background:var(--gold);color:var(--navy);border:none;cursor:pointer;
+  font-size:1.05rem;font-weight:700;letter-spacing:.01em;
+  padding:16px 52px;border-radius:980px;
+  transition:transform .35s var(--ease),box-shadow .35s var(--ease),background .35s var(--ease);
+  box-shadow:0 10px 32px -10px rgba(201,162,75,.5);
+}
+.submit:hover{transform:translateY(-2px);background:var(--gold-soft);box-shadow:0 16px 40px -12px rgba(201,162,75,.6)}
 .submit:active{transform:translateY(0)}
+.finish-note{
+  margin-top:20px;font-size:.82rem;
+  color:rgba(255,255,255,.3);letter-spacing:.01em;
+  font-style:italic;
+}
 
 /* ---------- footer ---------- */
 footer{background:var(--navy-deep);color:rgba(255,255,255,.6);text-align:center;padding:54px 24px;font-size:.82rem;letter-spacing:0}
