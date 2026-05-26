@@ -51,17 +51,14 @@ header .count b{color:var(--navy);font-weight:600}
   background:radial-gradient(120% 90% at 50% 0%,#ffffff 0%,#ffffff 45%,#f3f4f7 100%);
   position:relative;
 }
-.hero .logo{font-size:clamp(1.6rem,4vw,2.2rem);color:var(--navy);margin-bottom:20px}
-.hero .eyebrow{margin-top:0;margin-bottom:16px}
-.hero h1{
-  font-size:clamp(3rem,8vw,5.6rem);font-weight:600;line-height:1.04;
-  letter-spacing:-.03em;color:var(--navy);margin:0 auto;
+.hero-banner-wrap{
+  width:100%;max-width:840px;
+  border-radius:20px;overflow:hidden;
+  box-shadow:0 24px 64px -20px rgba(10,37,64,.2);
+  margin-bottom:28px;
 }
-.hero p.intro{
-  max-width:28rem;margin:22px auto 0;color:var(--ink-2);
-  font-size:clamp(.98rem,2vw,1.1rem);line-height:1.65;letter-spacing:0;
-}
-.hero .meta{margin-top:20px;font-size:.86rem;color:var(--ink-2);letter-spacing:0}
+.hero-banner{width:100%;display:block}
+.hero .meta{margin-top:0;font-size:.88rem;color:var(--ink-2);letter-spacing:0}
 .hero .meta span{display:inline-flex;align-items:center;gap:7px}
 .hero .meta .dot{width:4px;height:4px;border-radius:50%;background:var(--line);margin:0 14px;display:inline-block;vertical-align:middle}
 .cta{
