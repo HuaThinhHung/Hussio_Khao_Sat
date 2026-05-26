@@ -149,37 +149,71 @@ footer .addr{margin-top:6px;line-height:1.7}
 /* ---------- thank you ---------- */
 .thanks{
   position:fixed;inset:0;z-index:100;background:var(--white);
-  display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;
-  padding:40px;opacity:0;visibility:hidden;transition:opacity .6s var(--ease),visibility .6s
+  display:flex;align-items:flex-start;justify-content:center;
+  overflow-y:auto;
+  opacity:0;visibility:hidden;transition:opacity .6s var(--ease),visibility .6s
 }
 .thanks.show{opacity:1;visibility:visible}
+.thanks-inner{
+  display:flex;flex-direction:column;align-items:center;text-align:center;
+  padding:60px 24px 60px;width:100%;max-width:480px;
+}
 .check{
-  width:96px;height:96px;border-radius:50%;border:2px solid var(--navy);display:grid;place-items:center;margin-bottom:34px;
+  width:80px;height:80px;border-radius:50%;border:2px solid var(--navy);display:grid;place-items:center;margin-bottom:24px;
   transform:scale(.6);opacity:0;transition:transform .6s var(--ease) .15s,opacity .6s ease .15s
 }
 .thanks.show .check{transform:scale(1);opacity:1}
-.check svg{width:46px;height:46px}
+.check svg{width:38px;height:38px}
 .check path{
   stroke:var(--navy);stroke-width:4;fill:none;stroke-linecap:round;stroke-linejoin:round;
   stroke-dasharray:60;stroke-dashoffset:60;transition:stroke-dashoffset .6s var(--ease) .55s
 }
 .thanks.show .check path{stroke-dashoffset:0}
-.thanks .wordmark{color:var(--navy);font-size:1.3rem;margin-bottom:26px}
-.thanks h2{font-size:clamp(2rem,6vw,3.2rem);font-weight:600;letter-spacing:-.025em;color:var(--navy)}
-.thanks p{max-width:30rem;margin:18px auto 0;color:var(--ink-2);font-size:clamp(1rem,2.4vw,1.15rem);line-height:1.6;letter-spacing:0}
-.thanks .acts{margin-top:38px;display:flex;gap:14px;flex-wrap:wrap;justify-content:center}
-.btn-ghost{
-  background:transparent;border:1px solid var(--line);color:var(--ink);cursor:pointer;
-  font-size:.98rem;padding:13px 28px;border-radius:980px;letter-spacing:0;
-  transition:border-color .25s var(--ease),color .25s var(--ease)
+.thanks .wordmark{color:var(--navy);font-size:1.2rem;margin-bottom:18px}
+.thanks h2{font-size:clamp(1.8rem,5vw,2.6rem);font-weight:600;letter-spacing:-.025em;color:var(--navy)}
+.thanks-desc{max-width:28rem;margin:14px auto 0;color:var(--ink-2);font-size:clamp(.95rem,2.2vw,1.08rem);line-height:1.6;letter-spacing:0}
+
+/* ---------- voucher ---------- */
+.voucher{
+  margin-top:28px;width:100%;border-radius:var(--radius);
+  overflow:hidden;border:1px solid var(--line);
+  box-shadow:0 12px 40px -16px rgba(10,37,64,.18);
 }
-.btn-ghost:hover{border-color:var(--navy);color:var(--navy)}
-.btn-solid{
-  background:var(--navy);border:1px solid var(--navy);color:#fff;cursor:pointer;
-  font-size:.98rem;padding:13px 28px;border-radius:980px;letter-spacing:0;
-  transition:background .25s var(--ease)
+.voucher-banner{width:100%;display:block;object-fit:cover}
+.voucher-body{
+  background:var(--navy-deep);padding:24px 24px 20px;text-align:center;
 }
-.btn-solid:hover{background:var(--navy-soft)}
+.voucher-label{
+  font-size:.7rem;letter-spacing:.22em;text-transform:uppercase;
+  color:var(--gold-soft);font-weight:600;margin-bottom:16px;
+}
+.btn-claim{
+  display:inline-flex;align-items:center;gap:8px;
+  background:var(--gold);color:var(--navy);text-decoration:none;
+  font-size:1rem;font-weight:700;padding:14px 32px;border-radius:980px;
+  transition:background .25s var(--ease),transform .2s var(--ease),box-shadow .25s var(--ease);
+  box-shadow:0 8px 24px -8px rgba(201,162,75,.5);
+  letter-spacing:.01em;
+}
+.btn-claim:hover{background:var(--gold-soft);transform:translateY(-2px);box-shadow:0 14px 30px -8px rgba(201,162,75,.55)}
+.btn-claim:active{transform:translateY(0)}
+.voucher-divider{
+  display:flex;align-items:center;gap:12px;margin:18px 0;
+}
+.voucher-divider::before,.voucher-divider::after{
+  content:"";flex:1;height:1px;background:rgba(255,255,255,.12);
+}
+.voucher-divider span{
+  font-size:.75rem;color:rgba(255,255,255,.4);letter-spacing:.1em;text-transform:uppercase;white-space:nowrap;
+}
+.voucher-qr{
+  width:140px;height:140px;border-radius:10px;
+  background:#fff;padding:8px;display:block;margin:0 auto;
+}
+.voucher-hint{
+  margin-top:14px;font-size:.73rem;color:rgba(255,255,255,.38);
+  line-height:1.55;letter-spacing:0;
+}
 
 /* ---------- voucher ---------- */
 .voucher{

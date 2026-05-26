@@ -151,14 +151,5 @@ function sendToGoogle() {
   } catch (err) { /* silent fail — user vẫn thấy màn cảm ơn */ }
 }
 
-document.getElementById('copyBtn').addEventListener('click', () => {
-  const code = document.getElementById('voucherCode').textContent;
-  navigator.clipboard.writeText(code).then(() => {
-    const btn = document.getElementById('copyBtn');
-    btn.textContent = 'Đã sao chép!';
-    btn.classList.add('copied');
-    setTimeout(() => { btn.textContent = 'Sao chép'; btn.classList.remove('copied'); }, 2200);
-  });
-});
 
 refresh();
