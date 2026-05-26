@@ -78,11 +78,13 @@ form.addEventListener('change', (e) => {
     refresh();
     const idx = parseInt(inner.dataset.q, 10);
     const next = document.querySelector(`.q-inner[data-q="${idx + 1}"]`);
-    if (next) {
-      setTimeout(() => {
+    setTimeout(() => {
+      if (next) {
         next.closest('.q-section').scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }, 280);
-    }
+      } else {
+        document.querySelector('.finish').scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }, 280);
   }
 });
 
