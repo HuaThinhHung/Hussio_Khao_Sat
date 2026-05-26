@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git push *)",
+      "Bash(git rm *)",
+      "Bash(Remove-Item \"d:\\\\Du_An\\\\Hussio_Khao_Sat\\\\HUSSIO_Khao_Sat.html\")",
+      "Bash(del \"d:\\\\Du_An\\\\Hussio_Khao_Sat\\\\HUSSIO_Khao_Sat.html\")"
+    ]
+  }
+}

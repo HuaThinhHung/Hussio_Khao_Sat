@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:docs.google.com)",
+      "Bash(powershell -command \"\\(Get-Content 'd:\\\\Du_An\\\\Hussio_Khao_Sat\\\\index.html'\\).Count; \\(Get-Content 'd:\\\\Du_An\\\\Hussio_Khao_Sat\\\\style.css'\\).Count; \\(Get-Content 'd:\\\\Du_An\\\\Hussio_Khao_Sat\\\\main.js'\\).Count\")",
+      "Bash(git config *)",
+      "Bash(git init *)",
+      "Bash(git remote *)",
+      "Bash(echo \"EXIT:$?\")",
+      "Bash(git add *)",
+      "Bash(git commit *)"
+    ]
+  }
+}
