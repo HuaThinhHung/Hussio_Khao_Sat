@@ -171,8 +171,9 @@ document.getElementById('captureBtn').addEventListener('click', async () => {
 
     const url = canvas.toDataURL('image/png');
 
-    // mobile: dùng Web Share API nếu hỗ trợ
-    if (navigator.share && navigator.canShare) {
+    // chỉ dùng Web Share API trên mobile thật (Android/iOS)
+    const isRealMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+    if (isRealMobile && navigator.share && navigator.canShare) {
       canvas.toBlob(async (blob) => {
         try {
           const file = new File([blob], 'hussio-voucher-19.png', { type: 'image/png' });
