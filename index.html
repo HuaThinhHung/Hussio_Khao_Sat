@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HUSSIO · Khảo sát khách hàng Q1/2026</title>
+<meta name="description" content="Khảo sát khách hàng HUSSIO — Quý 1/2026. Vài phút chia sẻ của anh/chị giúp chúng tôi may đo trải nghiệm tốt hơn.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Prosto+One&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div id="bar"></div>
+<header id="topbar">
+  <span class="wordmark">HUSSIO</span>
+  <span class="count"><b id="hcount">0</b> / 12 câu</span>
+</header>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="logo wordmark">HUSSIO</div>
+  <h1>Khảo sát khách hàng</h1>
+  <div class="q">Quý 1 · 2026</div>
+  <p class="intro">Cảm ơn anh/chị đã đồng hành cùng HUSSIO. Vài phút chia sẻ của anh/chị sẽ giúp chúng tôi may đo trải nghiệm và sản phẩm ngày một tốt hơn.</p>
+  <div class="meta">
+    <span>12 câu hỏi</span><span class="dot"></span><span>khoảng 3 phút</span>
+  </div>
+  <button class="cta" id="startBtn">
+    Bắt đầu khảo sát
+    <svg viewBox="0 0 24 24" fill="none"><path d="M12 5v14M12 19l-6-6M12 19l6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  </button>
+  <div class="scrollcue">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  </div>
+</section>
+
+<!-- QUESTIONS -->
+<main id="form"></main>
+
+<!-- FINISH -->
+<section class="finish">
+  <span class="wordmark">HUSSIO</span>
+  <h2>Hoàn tất khảo sát của anh/chị</h2>
+  <p class="answered">Đã trả lời <b id="fcount">0</b> trên 12 câu hỏi</p>
+  <button class="submit" id="submitBtn">Gửi phản hồi</button>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <span class="wordmark">HUSSIO</span>
+  <div>© 2026 HUSSIO · Thời trang nam · <a href="https://hussio.com" target="_blank" rel="noopener">hussio.com</a></div>
+  <div class="addr">120 Trần Não, P. Bình An, TP. Thủ Đức, TP. Hồ Chí Minh</div>
+</footer>
+
+<!-- Iframe ẩn nhận phản hồi POST từ Google Form -->
+<iframe name="gform_sink" title="sink" style="display:none" aria-hidden="true"></iframe>
+
+<!-- THANK YOU -->
+<div class="thanks" id="thanks">
+  <div class="check">
+    <svg viewBox="0 0 52 52"><path d="M14 27l8 8 16-18"/></svg>
+  </div>
+  <div class="wordmark">HUSSIO</div>
+  <h2>Cảm ơn anh/chị!</h2>
+  <p>Phản hồi của anh/chị đã được ghi nhận. HUSSIO sẽ tiếp tục hoàn thiện để mỗi sản phẩm thật sự dành riêng cho người đàn ông của mình.</p>
+  <div class="acts">
+    <button class="btn-ghost" id="downloadBtn">Tải câu trả lời (.txt)</button>
+    <button class="btn-solid" id="resetBtn">Gửi phản hồi khác</button>
+  </div>
+</div>
+
+<script src="main.js"></script>
+</body>
+</html>
