@@ -52,7 +52,7 @@ header .count b{color:var(--navy);font-weight:600}
   position:relative;
 }
 .hero-banner-wrap{
-  width:100%;max-width:840px;
+  width:100%;max-width:1380px;
   border-radius:20px;overflow:hidden;
   box-shadow:0 24px 64px -20px rgba(10,37,64,.2);
   margin-bottom:28px;
@@ -249,6 +249,20 @@ footer .addr{margin-top:6px;line-height:1.7}
   width:220px;height:auto;display:block;
   border-radius:10px;object-fit:contain;
 }
+
+/* ---------- capture button ---------- */
+.btn-capture{
+  display:flex;align-items:center;justify-content:center;gap:9px;
+  background:var(--navy);color:#fff;border:none;cursor:pointer;
+  font-size:.95rem;font-weight:700;padding:14px 20px;
+  border-radius:14px;width:100%;margin-top:18px;
+  transition:background .25s var(--ease),transform .2s var(--ease),box-shadow .25s var(--ease);
+  box-shadow:0 8px 28px -8px rgba(10,37,64,.45);
+  letter-spacing:.01em;
+}
+.btn-capture:hover{background:var(--navy-soft);transform:translateY(-2px);box-shadow:0 14px 32px -8px rgba(10,37,64,.5)}
+.btn-capture:active{transform:translateY(0)}
+.btn-capture:disabled{opacity:.6;cursor:wait;transform:none}
 
 /* ---------- zalo CTA ---------- */
 .btn-zalo{

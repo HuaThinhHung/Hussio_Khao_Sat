@@ -151,5 +151,52 @@ function sendToGoogle() {
   } catch (err) { /* silent fail — user vẫn thấy màn cảm ơn */ }
 }
 
-
 refresh();
+
+// screenshot button
+document.getElementById('captureBtn').addEventListener('click', async () => {
+  const btn = document.getElementById('captureBtn');
+  const inner = document.querySelector('.thanks-inner');
+  btn.disabled = true;
+  btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" width="18" height="18"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.8" stroke-dasharray="4 3"/></svg> Đang chụp...`;
+
+  try {
+    const canvas = await html2canvas(inner, {
+      scale: 2,
+      useCORS: true,
+      backgroundColor: '#EDEEF1',
+      logging: false,
+      ignoreElements: el => el.id === 'captureBtn'
+    });
+
+    const url = canvas.toDataURL('image/png');
+
+    // mobile: dùng Web Share API nếu hỗ trợ
+    if (navigator.share && navigator.canShare) {
+      canvas.toBlob(async (blob) => {
+        try {
+          const file = new File([blob], 'hussio-voucher-19.png', { type: 'image/png' });
+          if (navigator.canShare({ files: [file] })) {
+            await navigator.share({ files: [file], title: 'HUSSIO Voucher 19%' });
+            return;
+          }
+        } catch {}
+        triggerDownload(url);
+      });
+    } else {
+      triggerDownload(url);
+    }
+  } catch {
+    alert('Không thể chụp tự động. Vui lòng chụp màn hình thủ công rồi gửi Zalo HUSSIO nhé!');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" width="18" height="18"><rect x="3" y="5" width="18" height="14" rx="2" stroke="currentColor" stroke-width="1.8"/><circle cx="12" cy="12" r="3.5" stroke="currentColor" stroke-width="1.8"/><path d="M9 5l1.5-2h3L15 5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg> Lưu ảnh màn hình`;
+  }
+});
+
+function triggerDownload(url) {
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'hussio-voucher-19.png';
+  a.click();
+}
