@@ -181,6 +181,49 @@ footer .addr{margin-top:6px;line-height:1.7}
 }
 .btn-solid:hover{background:var(--navy-soft)}
 
+/* ---------- voucher ---------- */
+.voucher{
+  margin-top:32px;width:100%;max-width:380px;
+  background:var(--navy-deep);border-radius:var(--radius);
+  padding:28px 28px 22px;text-align:left;position:relative;overflow:hidden;
+}
+.voucher::after{
+  content:"";position:absolute;bottom:-40px;right:-30px;
+  width:120px;height:120px;border-radius:50%;
+  background:rgba(201,162,75,.08);pointer-events:none;
+}
+.voucher-label{
+  font-size:.68rem;letter-spacing:.22em;text-transform:uppercase;
+  color:var(--gold-soft);font-weight:600;margin-bottom:10px;
+}
+.voucher-discount{
+  font-size:2.8rem;font-weight:700;color:#fff;
+  letter-spacing:-.02em;line-height:1;margin-bottom:20px;
+}
+.voucher-row{
+  display:flex;align-items:center;gap:10px;
+  background:rgba(255,255,255,.08);
+  border:1.5px dashed rgba(255,255,255,.2);
+  border-radius:10px;padding:11px 14px;margin-bottom:14px;
+}
+.voucher-code{
+  font-family:"SF Mono",SFMono-Regular,ui-monospace,Menlo,monospace;
+  font-size:1.25rem;font-weight:700;color:#fff;letter-spacing:.18em;flex:1;
+}
+.btn-copy{
+  background:var(--gold);border:none;color:var(--navy);
+  font-size:.8rem;font-weight:700;padding:7px 15px;
+  border-radius:8px;cursor:pointer;letter-spacing:.04em;
+  transition:background .2s var(--ease),transform .15s var(--ease);
+  white-space:nowrap;flex-shrink:0;
+}
+.btn-copy:hover{background:var(--gold-soft)}
+.btn-copy:active{transform:scale(.95)}
+.btn-copy.copied{background:#27ae60;color:#fff}
+.voucher-hint{font-size:.76rem;color:rgba(255,255,255,.45);line-height:1.55}
+.voucher-hint a{color:rgba(255,255,255,.65);text-decoration:none}
+.voucher-hint a:hover{color:#fff}
+
 @media (max-width:560px){
   .hero .meta .dot{margin:0 9px}
   .option{padding:16px 18px;gap:13px}

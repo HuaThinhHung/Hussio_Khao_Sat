@@ -151,27 +151,14 @@ function sendToGoogle() {
   } catch (err) { /* silent fail — user vẫn thấy màn cảm ơn */ }
 }
 
-document.getElementById('downloadBtn').addEventListener('click', () => {
-  const data = window._answers || collect();
-  let txt = 'HUSSIO — KHẢO SÁT KHÁCH HÀNG Q1/2026\n';
-  txt += 'Thời gian: ' + new Date().toLocaleString('vi-VN') + '\n';
-  txt += '=========================================\n\n';
-  data.forEach((d, i) => { txt += `${i + 1}. ${d.q}\n   → ${d.a || '(chưa trả lời)'}\n\n`; });
-  const blob = new Blob([txt], { type: 'text/plain;charset=utf-8' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url; a.download = 'HUSSIO_KhaoSat_Q1-2026.txt';
-  a.click(); URL.revokeObjectURL(url);
-});
-
-document.getElementById('resetBtn').addEventListener('click', () => {
-  document.querySelectorAll('input[type=radio]:checked').forEach(r => r.checked = false);
-  document.querySelectorAll('.option.is-checked').forEach(l => l.classList.remove('is-checked'));
-  document.querySelectorAll('.q-inner').forEach(el => el.classList.remove('err'));
-  document.getElementById('thanks').classList.remove('show');
-  document.body.style.overflow = '';
-  refresh();
-  window.scrollTo({ top: 0, behavior: 'smooth' });
+document.getElementById('copyBtn').addEventListener('click', () => {
+  const code = document.getElementById('voucherCode').textContent;
+  navigator.clipboard.writeText(code).then(() => {
+    const btn = document.getElementById('copyBtn');
+    btn.textContent = 'Đã sao chép!';
+    btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = 'Sao chép'; btn.classList.remove('copied'); }, 2200);
+  });
 });
 
 refresh();
