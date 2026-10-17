@@ -1,11 +1,31 @@
 // POST /api/claim  body {"phone": "..."} → { ok, code } | { ok: false, error: phone|ended|used|soldout|busy|limit }
 // GET  /api/claim  → số mã đã phát / còn lại (không lộ SĐT, mã).
 // Kho: Vercel Blob private "hussio-voucher-ks20" (BLOB_STORE_ID, xác thực OIDC). 300 mã nằm trong env KS20_CODES.
+// Phát mã xong thì ghi thêm Mã + SĐT vào form ẩn "HUSSIO - Sổ phát voucher khảo sát lần 2 (nội bộ)",
+// form này đổ vào Google Sheet "HUSSIO - Kho mã voucher khảo sát lần 2 (20%)" để CSKH đối chiếu.
+// Blob vẫn là nguồn chống trùng; Sheet chỉ là bản để xem.
 import { get, put, BlobPreconditionFailedError } from '@vercel/blob';
-import { claim, stats } from './_voucher.js';
+import { claim, stats, normalizePhone } from './_voucher.js';
 
 const STATE_PATH = 'ks20/claims.json';
 const ORIGINS = ['https://khaosat.hussio-vn.com', 'https://hussio-khao-sat.vercel.app', 'http://localhost:5173'];
+const LOG_FORM = 'https://docs.google.com/forms/d/e/1FAIpQLSd5jNwiQDPCL0h3v7uMFkHdViMFl8inid_u5-Ga9677sxxSnA/formResponse';
+const LOG_CODE = 'entry.1391917465';
+const LOG_PHONE = 'entry.1294366895';
+
+// lỗi ghi Sheet không làm hỏng việc phát mã: khách vẫn nhận mã, CSKH vẫn tra được trong Blob
+async function logToSheet(code, phone) {
+  try {
+    const res = await fetch(LOG_FORM, {
+      method: 'POST',
+      body: new URLSearchParams({ [LOG_CODE]: code, [LOG_PHONE]: phone }),
+      signal: AbortSignal.timeout(5000)
+    });
+    if (!res.ok) console.error('log sheet failed', res.status, code);
+  } catch (err) {
+    console.error('log sheet failed', code, err);
+  }
+}
 
 // Gói Hobby: Blob bị khoá 30 ngày nếu vượt 10.000 lượt đọc / 2.000 lượt ghi mỗi tháng,
 // nên giữ bản đọc gần nhất 10 giây. Bản cũ không gây phát trùng: ghi kèm ETag cũ sẽ bị từ chối rồi đọc lại.
@@ -75,7 +95,9 @@ export default async function handler(req, res) {
     const ip = String(req.headers['x-forwarded-for'] || '').split(',')[0].trim() || 'unknown';
     if (limited(ip)) return res.status(200).json({ ok: false, error: 'limit' });
 
-    return res.status(200).json(await claim(store, pool, body && body.phone));
+    const result = await claim(store, pool, body && body.phone);
+    if (result.ok) await logToSheet(result.code, normalizePhone(body.phone));
+    return res.status(200).json(result);
   } catch (err) {
     console.error('claim failed', err);
     return res.status(200).json({ ok: false, error: 'busy' });
