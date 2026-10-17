@@ -12,6 +12,9 @@ import { waitUntil } from '@vercel/functions';
 import { claim, stats, normalizePhone } from './_voucher.js';
 
 const STATE_PATH = 'ks20/claims.json';
+// Làm mới kho một lần: file chưa mang RESET_ID này thì các lượt nhận cũ (lượt thử nội bộ) được chuyển vào
+// "archived" và mã được trả về kho. Không xoá dữ liệu; đổi chuỗi này chỉ khi thật sự muốn làm mới lần nữa.
+const RESET_ID = '2026-10-18-xoa-luot-thu-noi-bo';
 // các địa chỉ đọc được kết quả API: tên miền chính, mọi link *.vercel.app của project (kể cả link deploy riêng),
 // và máy tính chạy thử. Thiếu địa chỉ nào thì trình duyệt chặn đọc kết quả dù máy chủ đã phát mã.
 const ORIGINS = [
@@ -46,18 +49,27 @@ const store = {
   async read(fresh) {
     if (!fresh && cache && Date.now() - cache.at < CACHE_MS) return cache.state;
     const r = await get(STATE_PATH, { access: 'private', useCache: false });   // null khi chưa có file
-    const state = r && r.statusCode === 200
-      ? { claims: JSON.parse(await new Response(r.stream).text()).claims || {}, etag: r.blob.etag }
-      : null;
+    let state = null;
+    if (r && r.statusCode === 200) {
+      const data = JSON.parse(await new Response(r.stream).text());
+      let claims = data.claims || {};
+      let archived = data.archived || [];
+      if (data.resetId !== RESET_ID) {
+        if (Object.keys(claims).length) archived = [...archived, { resetId: RESET_ID, archivedAt: new Date().toISOString(), claims }];
+        claims = {};
+      }
+      state = { claims, archived, etag: r.blob.etag };
+    }
     cache = { state, at: Date.now() };
     return state;
   },
-  async write(claims, etag) {
+  async write(claims, etag, prev) {
+    const archived = (prev && prev.archived) || [];
     const opts = { access: 'private', addRandomSuffix: false, contentType: 'application/json' };
     if (etag) opts.ifMatch = etag; else opts.allowOverwrite = false;
     try {
-      const res = await put(STATE_PATH, JSON.stringify({ claims }, null, 1), opts);
-      cache = { state: { claims, etag: res.etag }, at: Date.now() };
+      const res = await put(STATE_PATH, JSON.stringify({ resetId: RESET_ID, claims, archived }, null, 1), opts);
+      cache = { state: { claims, archived, etag: res.etag }, at: Date.now() };
     } catch (err) {
       // lệch ETag, hoặc 2 khách cùng ghi lần đầu khi chưa có file → đọc lại rồi ghi kèm ETag mới
       if (err instanceof BlobPreconditionFailedError || !etag) err.conflict = true;

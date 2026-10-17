@@ -32,7 +32,7 @@ export async function claim(store, codes, rawPhone, now = new Date(), token = ''
     if (!code) return { ok: false, error: 'soldout' };
     claims[phone] = token ? { code, at: now.toISOString(), t: token } : { code, at: now.toISOString() };
     try {
-      await store.write(claims, state ? state.etag : null);
+      await store.write(claims, state ? state.etag : null, state);
       return { ok: true, code };
     } catch (err) {
       if (!err || !err.conflict) throw err;
