@@ -14,6 +14,7 @@
   --maxw:720px;
 }
 *{margin:0;padding:0;box-sizing:border-box}
+[hidden]{display:none!important}
 html{scroll-behavior:smooth}
 body{
   font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","SF Pro Text","Inter","Open Sans","Segoe UI",Roboto,Helvetica,Arial,sans-serif;
@@ -52,12 +53,12 @@ header .count b{color:var(--navy);font-weight:600}
   position:relative;
 }
 .hero-banner-wrap{
-  width:100%;max-width:1380px;
+  display:block;width:100%;max-width:1380px;
   border-radius:20px;overflow:hidden;
   box-shadow:0 24px 64px -20px rgba(10,37,64,.2);
   margin-bottom:28px;
 }
-.hero-banner{width:100%;display:block}
+.hero-banner{width:100%;height:auto;display:block}
 .hero .meta{margin-top:0;font-size:.88rem;color:var(--ink-2);letter-spacing:0}
 .hero .meta span{display:inline-flex;align-items:center;gap:7px}
 .hero .meta .dot{width:4px;height:4px;border-radius:50%;background:var(--line);margin:0 14px;display:inline-block;vertical-align:middle}
@@ -205,7 +206,7 @@ footer .addr{margin-top:6px;line-height:1.7}
 
 /* ---------- thanks banner ---------- */
 .thanks-banner{
-  width:100%;border-radius:16px;display:block;
+  width:100%;height:auto;border-radius:16px;display:block;
   margin:20px 0 0;
   box-shadow:0 12px 40px -16px rgba(10,37,64,.22);
 }
@@ -418,6 +419,11 @@ footer .addr{margin-top:6px;line-height:1.7}
 .voucher-hint a{color:rgba(255,255,255,.65);text-decoration:none}
 .voucher-hint a:hover{color:#fff}
 
+@media (max-width:640px){
+  .hero{padding-top:56px;padding-bottom:64px}
+  .hero-banner-wrap{max-width:440px;margin-bottom:22px}
+  .cta{margin-top:26px}
+}
 @media (max-width:560px){
   .hero .meta .dot{margin:0 9px}
   .option{padding:16px 18px;gap:13px}

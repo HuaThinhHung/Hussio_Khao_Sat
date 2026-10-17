@@ -1,29 +1,38 @@
-const GFORM = "https://docs.google.com/forms/d/e/1FAIpQLSf-vTIHm8Tuza19WJP8gepTpeq8fDWfRewFy-4g2vitMUXwNQ/formResponse";
+// Google Form "Khảo Sát Hussio quý 2" (lần 2). Form phải được Xuất bản thì mới nhận câu trả lời.
+const GFORM = "https://docs.google.com/forms/d/e/1FAIpQLSfE_xgdVbnWvxjSlitcAfenjT5IWHxxS0pesPKhIM2LYWbS_w/formResponse";
 
+// Voucher cảm ơn. Điền link sau khi tạo mã giảm giá trên Shopify;
+// để trống thì ẩn nút "Dùng voucher ngay", khách vẫn nhận qua Zalo.
+const VOUCHER = {
+  link: "",      // vd "https://hussio.com/discount/MA-GIAM-GIA"
+  note: ""       // vd "Voucher có hiệu lực đến 31/12/2026 · Áp dụng cho đơn từ 250.000đ"
+};
+
+// o: [chữ hiển thị, giá trị gửi về form]. Giá trị phải khớp từng ký tự với đáp án trong Google Form.
 const QUESTIONS = [
-  { e:"entry.1205774175", t:"Trước tiên cho HUSSIO làm quen chút nha — anh/chị đang ở nhóm tuổi nào ạ?",
-    o:[["Dưới 22 tuổi","Dưới 22 tuổi"],["Từ 22 – 27 tuổi","từ 22 - 27 tuổi"],["Từ 28 – 35 tuổi","từ 28 - 35 tuổi"],["Trên 35 tuổi","Trên 35 tuổi"]] },
+  { e:"entry.1205774175", t:"Anh/chị thuộc nhóm độ tuổi nào dưới đây?",
+    o:[["Dưới 25 tuổi","Dưới 25 tuổi"],["Từ 25 – 30 tuổi","từ 25 - 30 tuổi"],["Từ 31 – 35 tuổi","từ 31 - 35 tuổi"],["Trên 35 tuổi","Trên 35 tuổi"]] },
   { e:"entry.950424376", t:"Anh/chị đã sử dụng sản phẩm của HUSSIO bao lâu rồi ạ?",
     o:[["Dưới 6 tháng","Dưới 6 tháng"],["Dưới 1 năm","Dưới 1 năm"],["Trên 1 năm","Trên 1 năm"],["Trên 3 năm","Trên 3 năm"]] },
   { e:"entry.566680951", t:"Theo anh/chị, HUSSIO đang đại diện cho hình ảnh nào nhất?",
-    o:[["Hiện đại và dễ ứng dụng","Hiện đại và dễ ứng dụng"],["Trẻ trung và năng động","Trẻ trung và năng động"],["Nam tính và trưởng thành","Nam tính và Trưởng thành"],["Thanh lịch và tối giản","Thanh lịch và tối giản"]] },
+    o:[["Hiện đại – Thanh lịch – Tối giản","Hiện đại - Thanh lịch - Tối giản"],["Trẻ trung – Năng động – Phóng khoáng","Trẻ trung - Năng động - Phóng khoáng"],["Nam tính – Trưởng thành – Bản lĩnh","Nam tính - Trưởng thành - Bản lĩnh"],["Tinh tế – Cao cấp – Vượt thời gian","Tinh tế – Cao cấp – Vượt thời gian"]] },
   { e:"entry.720087482", t:"Yếu tố nào khiến anh/chị quay lại mua sản phẩm của HUSSIO?",
-    o:[["Form dáng mặc đẹp","Form dáng mặc đẹp"],["Chất lượng ổn định","Chất lượng ổn định"],["Phong cách rõ ràng","Phong cách rõ ràng"],["Giá thành phù hợp","Giá thành phù hợp"]] },
-  { e:"entry.911577976", t:"Chơi nhỏ một chút nhé — nếu HUSSIO \"hoá thân\" thành một anh chàng ngoài đời, anh ấy sẽ là tuýp người nào?",
-    o:[["Anh công sở chất chơi — đi làm mà cứ như đi sự kiện","Người đàn ông công sở hiện đại"],["Quý ông tối giản — ít nói, nhưng mặc gì cũng \"ăn tiền\"","Người đàn ông thanh lịch và tối giản"],["Người đàn ông điềm tĩnh, từng trải — nhìn là thấy đáng tin","Người đàn ông trưởng thành và điềm tĩnh"],["Soái ca có gu — nam tính và biết rõ mình muốn gì","Người đàn ông nam tính và có gu"]] },
+    o:[["Form dáng mặc đẹp","Form dáng mặc đẹp"],["Chất lượng ổn định","Chất lượng ổn định"],["Sản phẩm có thiết kế phù hợp","Sản phẩm có thiết kế phù hợp"],["Giá thành hợp lí","Giá thành hợp lí"]] },
+  { e:"entry.911577976", t:"Đố vui tí nhé — nếu nhân hoá HUSSIO thành một người đàn ông, anh/chị nghĩ người đó sẽ như thế nào?",
+    o:[["Người đàn ông hiện đại, chỉn chu và thực tế","Người đàn ông hiện đại, chỉn chu và thực tế"],["Người đàn ông trẻ trung, cởi mở và tràn đầy năng lượng","Người đàn ông trẻ trung, cởi mở và tràn đầy năng lượng"],["Người đàn ông chững chạc, điềm đạm và lịch lãm","Người đàn ông chững chạc, điềm đạm và lịch lãm"],["Người đàn ông tinh tế, có gu thẩm mỹ cao","Người đàn ông tinh tế, có gu thẩm mỹ cao"]] },
   { e:"entry.705790333", t:"Anh/chị thường mặc sản phẩm của HUSSIO vào những dịp nào?",
     o:[["Đi làm","Đi Làm"],["Đi tiệc","Đi Tiệc"],["Đi cafe, đi chơi với bạn bè, người yêu","Đi cafe, đi chơi với bạn bè, người yêu"],["Cả 3 dịp trên","Cả 3 dịp trên"]] },
   { e:"entry.1763782315", t:"Anh/chị quan tâm đến yếu tố nào khi quyết định mua sản phẩm?",
-    o:[["Thiết kế – Kiểu dáng phù hợp","Thiết kế - Kiểu dáng phù hợp"],["Chất liệu và độ hoàn thiện sản phẩm cao","Chất liệu và độ hoàn thiện sản phẩm cao"],["Giá thành phù hợp","Giá thành phù hợp"],["Tính ứng dụng cao","Tính ứng dụng cao"],["Câu chuyện sản phẩm rõ nét","Câu chuyện sản phẩm rõ nét"]] },
+    o:[["Thiết kế – Kiểu dáng phù hợp","Thiết kế - Kiểu dáng phù hợp"],["Chất liệu và độ hoàn thiện sản phẩm cao","Chất liệu và độ hoàn thiện sản phẩm cao"],["Giá thành hợp lí","Giá thành hợp lí"],["Tính ứng dụng cao – mặc được nhiều dịp","Tính ứng dụng cao - mặc được nhiều dịp"]] },
   { e:"entry.1296764762", t:"Yếu tố nào ở HUSSIO khiến anh/chị yêu thích hoặc ấn tượng nhất?",
     o:[["Form dáng dễ mặc và ứng dụng cao","Form dáng dễ mặc và ứng dụng cao"],["Chất liệu đẹp, chất lượng sản phẩm tốt","Chất liệu đẹp, chất lượng sản phẩm tốt"],["Giá cả phù hợp","Giá cả phù hợp"],["Hình ảnh thương hiệu chỉn chu","Hình ảnh thương hiệu chỉn chu"],["Sự khác biệt so với các brand cùng phân khúc","Sự khác biệt so với các brand cùng phân khúc"]] },
-  { e:"entry.1840612361", t:"Yếu tố nào khiến anh/chị cảm thấy \"kết nối\" với một thương hiệu thời trang?",
-    o:[["Phong cách đúng với gu cá nhân","Phong cách đúng với gu cá nhân"],["Sự đồng nhất từ sản phẩm đến truyền thông","Sự đồng nhất từ sản phẩm đến truyền thông"],["Giá trị và tinh thần thương hiệu phù hợp với bản thân","Giá trị và tinh thần thương hiệu phù hợp với bản thân"],["Sản phẩm mang lại cảm giác tự tin khi mặc","Sản phẩm mang lại cảm giác tự tin khi mặc"],["Chất lượng và trải nghiệm tốt","Chất lượng và trải nghiệm tốt"]] },
+  { e:"entry.1840612361", t:"Yếu tố nào khiến anh/chị cảm thấy “kết nối” với một thương hiệu thời trang?",
+    o:[["Phong cách đúng với gu cá nhân","Phong cách đúng với gu cá nhân"],["Sự đồng nhất từ sản phẩm đến truyền thông","Sự đồng nhất từ sản phẩm đến truyền thông"],["Giá trị và tinh thần thương hiệu phù hợp với bản thân","Giá trị và tinh thần thương hiệu phù hợp với bản thân"],["Sản phẩm mang lại cảm giác tự tin khi mặc","Sản phẩm mang lại cảm giác tự tin khi mặc"],["Chất lượng và trải nghiệm sản phẩm tốt","Chất lượng và trải nghiệm sản phẩm tốt"]] },
   { e:"entry.1669516331", t:"Anh/chị thường có xu hướng thích thương hiệu như thế nào?",
     o:[["Liên tục cập nhật trend mới và tạo cảm giác mới mẻ","Liên tục cập nhật trend mới và tạo cảm giác mới mẻ"],["Có phong cách thương hiệu rõ ràng, phù hợp với hình tượng của bản thân","Có phong cách thương hiệu rõ ràng, phù hợp với hình tượng của bản thân"],["Kết hợp giữa tính thời trang và bản sắc riêng thương hiệu","Kết hợp giữa tính thời trang và bản sắc riêng thương hiệu"]] },
   { e:"entry.1258641336", t:"Anh/chị có quan tâm những bộ sưu tập có câu chuyện và cảm hứng văn hoá không?",
     o:[["Rất quan tâm","Rất quan tâm"],["Có, nếu được làm theo hướng hiện đại","Có, nếu được làm theo hướng hiện đại"],["Có nhưng không phải yếu tố quyết định","Có nhưng không phải yếu tố quyết định"],["Ít quan tâm","ít quan tâm"]] },
-  { e:"entry.884795961", t:"Câu cuối rồi, nói thẳng với HUSSIO nhé — anh/chị thấy thời trang nam Việt mình còn <strong>thiếu</strong> điều gì nhất?",
+  { e:"entry.884795961", t:"Theo anh/chị, thời trang nam Việt Nam hiện tại còn <strong>thiếu</strong> điều gì nhất?",
     o:[["Bản sắc và dấu ấn riêng của thương hiệu","Bản sắc và dấu ấn riêng của thương hiệu"],["Tính ứng dụng trong đời sống hằng ngày","Tính ứng dụng trong đời sống hằng ngày"],["Các thương hiệu có phong cách rõ ràng","Các thương hiệu có phong cách rõ ràng"],["Chất lượng tương xứng giá tiền","Chất lượng tương xứng giá tiền"],["Sự kết nối với văn hoá Việt theo cách hiện đại","Sự kết nối với văn hoá Việt theo cách hiện đại"]] }
 ];
 
@@ -100,10 +109,13 @@ new IntersectionObserver(([e]) => {
   topbar.classList.toggle('show', !e.isIntersecting);
 }, { threshold: 0 }).observe(document.querySelector('.hero'));
 
-// start button
-document.getElementById('startBtn').addEventListener('click', () => {
+// start button + bấm vào banner
+function startSurvey(e) {
+  if (e) e.preventDefault();
   document.querySelector('.q-section').scrollIntoView({ behavior: 'smooth', block: 'start' });
-});
+}
+document.getElementById('startBtn').addEventListener('click', startSurvey);
+document.getElementById('heroBanner').addEventListener('click', startSurvey);
 
 function collect() {
   return QUESTIONS.map((q, i) => {
@@ -153,6 +165,16 @@ function sendToGoogle() {
 
 refresh();
 
+// voucher cảm ơn: link dùng ngay + ghi chú hạn dùng lấy từ VOUCHER
+if (VOUCHER.link) {
+  document.querySelector('.btn-use-now').href = VOUCHER.link;
+} else {
+  document.querySelector('.vopt-now').hidden = true;
+  document.querySelector('.vopt-sep').hidden = true;
+}
+const vHint = document.querySelector('.thanks-hint');
+if (VOUCHER.note) vHint.textContent = VOUCHER.note; else vHint.hidden = true;
+
 // screenshot button
 document.getElementById('captureBtn').addEventListener('click', async () => {
   const btn = document.getElementById('captureBtn');
@@ -176,9 +198,9 @@ document.getElementById('captureBtn').addEventListener('click', async () => {
     if (isRealMobile && navigator.share && navigator.canShare) {
       canvas.toBlob(async (blob) => {
         try {
-          const file = new File([blob], 'hussio-voucher-19.png', { type: 'image/png' });
+          const file = new File([blob], 'hussio-voucher-20.png', { type: 'image/png' });
           if (navigator.canShare({ files: [file] })) {
-            await navigator.share({ files: [file], title: 'HUSSIO Voucher 19%' });
+            await navigator.share({ files: [file], title: 'HUSSIO Voucher 20%' });
             return;
           }
         } catch {}
@@ -198,6 +220,6 @@ document.getElementById('captureBtn').addEventListener('click', async () => {
 function triggerDownload(url) {
   const a = document.createElement('a');
   a.href = url;
-  a.download = 'hussio-voucher-19.png';
+  a.download = 'hussio-voucher-20.png';
   a.click();
 }
