@@ -9,7 +9,8 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Prosto+One&display=swap" rel="stylesheet">
 <!-- đổi ?v= mỗi lần sửa CSS/JS để trình duyệt tải bản mới ngay -->
-<link rel="stylesheet" href="style.css?v=20261017b">
+<link rel="stylesheet" href="style.css?v=20261017c">
+<link rel="preconnect" href="https://hussio-khao-sat.vercel.app">
 </head>
 <body>
 
@@ -72,7 +73,7 @@
     <h2>Cảm ơn anh/chị!</h2>
     <p class="thanks-desc" id="thanksDesc">Phản hồi đã được ghi nhận — voucher <strong>giảm 20%</strong> là lời cảm ơn của HUSSIO dành cho anh/chị.</p>
 
-    <img src="images/banner-cam-on.webp" alt="HUSSIO Voucher 20%" class="thanks-banner" id="thanksBanner" width="1920" height="900">
+    <img src="images/banner-cam-on.webp" alt="HUSSIO Voucher 20%" class="thanks-banner" id="thanksBanner" width="1920" height="900" fetchpriority="low" decoding="async">
 
     <!-- Option A: Dùng ngay -->
     <div class="vopt vopt-now">
@@ -114,7 +115,8 @@
   </div>
 </div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" crossorigin="anonymous"></script>
-<script src="main.js?v=20261017b"></script>
+<!-- html2canvas chỉ dùng khi bấm "Lưu ảnh màn hình": tải song song, không chặn main.js vẽ 12 câu hỏi -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" crossorigin="anonymous" async></script>
+<script src="main.js?v=20261017c" defer></script>
 </body>
 </html>

@@ -13,20 +13,25 @@ export function normalizePhone(s) {
 }
 
 // store.read(fresh) → { claims, etag } | null; store.write(claims, etag) ném lỗi có err.conflict khi ETag lệch.
-export async function claim(store, codes, rawPhone, now = new Date()) {
+// token: chuỗi ngẫu nhiên của từng máy (web tự tạo). Cùng SĐT + cùng token → trả lại mã cũ,
+// để web thử lại an toàn khi mạng rớt sau lúc máy chủ đã phát mã.
+export async function claim(store, codes, rawPhone, now = new Date(), token = '') {
   const phone = normalizePhone(rawPhone);
   if (!phone) return { ok: false, error: 'phone' };
   if (now > END_AT) return { ok: false, error: 'ended' };
+  token = /^[\w-]{16,64}$/.test(String(token || '')) ? String(token) : '';
 
   for (let attempt = 0; attempt < 8; attempt++) {
     const state = await store.read(attempt > 0);
     const claims = { ...(state ? state.claims : {}) };
-    // SĐT đã nhận: không trả lại mã, tránh người khác dò SĐT để lấy mã
-    if (claims[phone]) return { ok: false, error: 'used' };
+    const mine = claims[phone];
+    if (mine && token && mine.t === token) return { ok: true, code: mine.code, again: true };
+    // SĐT đã nhận từ máy khác: không trả lại mã, tránh người khác dò SĐT để lấy mã
+    if (mine) return { ok: false, error: 'used' };
     const taken = new Set(Object.values(claims).map(c => c.code));
     const code = codes.find(c => !taken.has(c));
     if (!code) return { ok: false, error: 'soldout' };
-    claims[phone] = { code, at: now.toISOString() };
+    claims[phone] = token ? { code, at: now.toISOString(), t: token } : { code, at: now.toISOString() };
     try {
       await store.write(claims, state ? state.etag : null);
       return { ok: true, code };

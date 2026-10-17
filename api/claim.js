@@ -1,10 +1,13 @@
 // POST /api/claim  body {"phone": "..."} → { ok, code } | { ok: false, error: phone|ended|used|soldout|busy|limit }
 // GET  /api/claim  → số mã đã phát / còn lại (không lộ SĐT, mã).
+// GET  /api/claim?ping=1 → { ok: true }: web gọi khi khách mở trang để máy chủ khởi động sẵn, không đọc kho.
+// Chạy ở vùng sin1 (vercel.json), cùng vùng với kho Blob.
 // Kho: Vercel Blob private "hussio-voucher-ks20" (BLOB_STORE_ID, xác thực OIDC). 300 mã nằm trong env KS20_CODES.
 // Phát mã xong thì ghi thêm Mã + SĐT vào form ẩn "HUSSIO - Sổ phát voucher khảo sát lần 2 (nội bộ)",
 // form này đổ vào Google Sheet "HUSSIO - Kho mã voucher khảo sát lần 2 (20%)" để CSKH đối chiếu.
 // Blob vẫn là nguồn chống trùng; Sheet chỉ là bản để xem.
 import { get, put, BlobPreconditionFailedError } from '@vercel/blob';
+import { waitUntil } from '@vercel/functions';
 import { claim, stats, normalizePhone } from './_voucher.js';
 
 const STATE_PATH = 'ks20/claims.json';
@@ -86,6 +89,7 @@ export default async function handler(req, res) {
   if (!pool.length) return res.status(500).json({ ok: false, error: 'config' });
 
   try {
+    if (req.method === 'GET' && new URL(req.url || '/', 'http://x').searchParams.has('ping')) return res.status(200).json({ ok: true });
     if (req.method === 'GET') return res.status(200).json(stats(await store.read(false), pool));
     if (req.method !== 'POST') return res.status(405).json({ ok: false, error: 'method' });
 
@@ -95,8 +99,9 @@ export default async function handler(req, res) {
     const ip = String(req.headers['x-forwarded-for'] || '').split(',')[0].trim() || 'unknown';
     if (limited(ip)) return res.status(200).json({ ok: false, error: 'limit' });
 
-    const result = await claim(store, pool, body && body.phone);
-    if (result.ok) await logToSheet(result.code, normalizePhone(body.phone));
+    const result = await claim(store, pool, body && body.phone, new Date(), body && body.token);
+    // trả mã cho khách ngay; ghi Sheet chạy nền sau khi đã trả lời (Vercel giữ hàm sống tới khi xong)
+    if (result.ok && !result.again) waitUntil(logToSheet(result.code, normalizePhone(body.phone)));
     return res.status(200).json(result);
   } catch (err) {
     console.error('claim failed', err);

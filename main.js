@@ -9,6 +9,7 @@ const VOUCHER = {
   note: "Mỗi mã dùng 1 lần · Hiệu lực đến 23:59 ngày 16/11/2026 · Áp dụng cho mọi đơn hàng trên hussio.com"
 };
 const CLAIM_KEY = "hussio_ks2_voucher";
+const TOKEN_KEY = "hussio_ks2_token";
 
 // o: [chữ hiển thị, giá trị gửi về form]. Giá trị phải khớp từng ký tự với đáp án trong Google Form.
 const QUESTIONS = [
@@ -150,24 +151,60 @@ phoneInput.addEventListener('input', () => {
   phoneErr.hidden = true;
   phoneInput.classList.remove('err');
 });
+phoneInput.addEventListener('focus', () => warmUp());
 
 function savedClaim() {
   try { return JSON.parse(localStorage.getItem(CLAIM_KEY) || 'null'); } catch { return null; }
 }
 
-async function claimVoucher(phone) {
-  if (!VOUCHER.claimUrl) return { ok: false, error: 'offline' };
+// mã ngẫu nhiên của máy này: gửi lại cùng SĐT từ cùng máy thì API trả lại đúng mã cũ (thử lại an toàn khi mạng rớt)
+function deviceToken() {
+  let t = null;
+  try { t = localStorage.getItem(TOKEN_KEY); } catch {}
+  if (!t) {
+    t = (crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2));
+    try { localStorage.setItem(TOKEN_KEY, t); } catch {}
+  }
+  window._deviceToken = window._deviceToken || t;
+  return window._deviceToken;
+}
+
+// đánh thức API sớm để lúc khách bấm gửi không phải chờ máy chủ khởi động (không đọc kho)
+let lastWarm = 0;
+function warmUp() {
+  if (!VOUCHER.claimUrl || Date.now() - lastWarm < 60000) return;
+  lastWarm = Date.now();
+  fetch(VOUCHER.claimUrl + '?ping=1').catch(() => {});
+}
+
+async function claimOnce(phone) {
   const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), 20000);
+  const timer = setTimeout(() => ctrl.abort(), 15000);
   try {
-    // body chuỗi → Content-Type text/plain, không phát sinh preflight CORS với Apps Script
-    const res = await fetch(VOUCHER.claimUrl, { method: 'POST', body: JSON.stringify({ phone }), signal: ctrl.signal });
+    // body chuỗi → Content-Type text/plain, không phát sinh preflight CORS
+    const res = await fetch(VOUCHER.claimUrl, { method: 'POST', body: JSON.stringify({ phone, token: deviceToken() }), signal: ctrl.signal });
+    if (!res.ok) return { ok: false, error: 'network' };
     return await res.json();
   } catch {
     return { ok: false, error: 'network' };
   } finally {
     clearTimeout(timer);
   }
+}
+
+// mạng yếu: thử tối đa 3 lần; các lỗi có nghĩa (SĐT sai, đã nhận, hết mã...) trả về ngay
+async function claimVoucher(phone) {
+  if (!VOUCHER.claimUrl) return { ok: false, error: 'offline' };
+  let r;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    if (attempt > 0) {
+      submitBtn.textContent = 'Mạng chậm, đang thử lại...';
+      await new Promise(res => setTimeout(res, attempt * 1500));
+    }
+    r = await claimOnce(phone);
+    if (r.ok || (r.error !== 'network' && r.error !== 'busy')) return r;
+  }
+  return r;
 }
 
 submitBtn.addEventListener('click', async () => {
@@ -241,6 +278,7 @@ function sendToGoogle() {
 }
 
 refresh();
+warmUp();
 
 // màn cảm ơn theo kết quả phát mã:
 // ok/again = có mã; used = SĐT đã nhận trước đó; soldout = hết mã hoặc hết hạn; fallback = lỗi mạng, nhận qua Zalo
