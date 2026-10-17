@@ -1,4 +1,5 @@
-// POST /api/claim  body {"phone": "..."} → { ok, code } | { ok: false, error: phone|ended|used|soldout|busy|limit }
+// POST /api/claim  body {"phone": "...", "token": "..."} → { ok, code, again?, sameDevice? }
+//                  | { ok: false, error: phone|ended|soldout|busy|limit }   (SĐT đã nhận → again: true, cùng mã cũ)
 // GET  /api/claim  → số mã đã phát / còn lại (không lộ SĐT, mã).
 // GET  /api/claim?ping=1 → { ok: true }: web gọi khi khách mở trang để máy chủ khởi động sẵn, không đọc kho.
 // Chạy ở vùng sin1 (vercel.json), cùng vùng với kho Blob.
@@ -11,7 +12,13 @@ import { waitUntil } from '@vercel/functions';
 import { claim, stats, normalizePhone } from './_voucher.js';
 
 const STATE_PATH = 'ks20/claims.json';
-const ORIGINS = ['https://khaosat.hussio-vn.com', 'https://hussio-khao-sat.vercel.app', 'http://localhost:5173'];
+// các địa chỉ đọc được kết quả API: tên miền chính, mọi link *.vercel.app của project (kể cả link deploy riêng),
+// và máy tính chạy thử. Thiếu địa chỉ nào thì trình duyệt chặn đọc kết quả dù máy chủ đã phát mã.
+const ORIGINS = [
+  /^https?:\/\/khaosat\.hussio-vn\.com$/,
+  /^https:\/\/hussio-khao-[a-z0-9-]+\.vercel\.app$/,
+  /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/
+];
 const LOG_FORM = 'https://docs.google.com/forms/d/e/1FAIpQLSd5jNwiQDPCL0h3v7uMFkHdViMFl8inid_u5-Ga9677sxxSnA/formResponse';
 const LOG_CODE = 'entry.1391917465';
 const LOG_PHONE = 'entry.1294366895';
@@ -76,7 +83,7 @@ function codes() {
 
 export default async function handler(req, res) {
   const origin = req.headers.origin;
-  if (ORIGINS.includes(origin)) res.setHeader('Access-Control-Allow-Origin', origin);
+  if (origin && ORIGINS.some(re => re.test(origin))) res.setHeader('Access-Control-Allow-Origin', origin);
   res.setHeader('Vary', 'Origin');
   res.setHeader('Cache-Control', 'no-store');
   if (req.method === 'OPTIONS') {
@@ -100,8 +107,10 @@ export default async function handler(req, res) {
     if (limited(ip)) return res.status(200).json({ ok: false, error: 'limit' });
 
     const result = await claim(store, pool, body && body.phone, new Date(), body && body.token);
-    // trả mã cho khách ngay; ghi Sheet chạy nền sau khi đã trả lời (Vercel giữ hàm sống tới khi xong)
-    if (result.ok && !result.again) waitUntil(logToSheet(result.code, normalizePhone(body.phone)));
+    // trả mã cho khách ngay; ghi Sheet chạy nền sau khi đã trả lời (Vercel giữ hàm sống tới khi xong).
+    // Khách lấy lại mã từ máy khác cũng ghi thêm 1 dòng (Sheet tra dòng đầu tiên nên không lệch);
+    // chỉ bỏ qua khi chính máy đó thử lại vì mạng rớt, tránh dòng trùng.
+    if (result.ok && !(result.again && result.sameDevice)) waitUntil(logToSheet(result.code, normalizePhone(body.phone)));
     return res.status(200).json(result);
   } catch (err) {
     console.error('claim failed', err);

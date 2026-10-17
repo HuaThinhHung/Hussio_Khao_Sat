@@ -13,8 +13,9 @@ export function normalizePhone(s) {
 }
 
 // store.read(fresh) → { claims, etag } | null; store.write(claims, etag) ném lỗi có err.conflict khi ETag lệch.
-// token: chuỗi ngẫu nhiên của từng máy (web tự tạo). Cùng SĐT + cùng token → trả lại mã cũ,
-// để web thử lại an toàn khi mạng rớt sau lúc máy chủ đã phát mã.
+// SĐT đã nhận → trả lại đúng mã cũ (again: true), không bao giờ cấp mã thứ hai cho 1 SĐT.
+// token: chuỗi ngẫu nhiên của từng máy (web tự tạo), lưu kèm lần nhận đầu; sameDevice cho web biết
+// đây là lần thử lại của chính máy đó (mạng rớt sau lúc máy chủ đã phát mã).
 export async function claim(store, codes, rawPhone, now = new Date(), token = '') {
   const phone = normalizePhone(rawPhone);
   if (!phone) return { ok: false, error: 'phone' };
@@ -25,9 +26,7 @@ export async function claim(store, codes, rawPhone, now = new Date(), token = ''
     const state = await store.read(attempt > 0);
     const claims = { ...(state ? state.claims : {}) };
     const mine = claims[phone];
-    if (mine && token && mine.t === token) return { ok: true, code: mine.code, again: true };
-    // SĐT đã nhận từ máy khác: không trả lại mã, tránh người khác dò SĐT để lấy mã
-    if (mine) return { ok: false, error: 'used' };
+    if (mine) return { ok: true, code: mine.code, again: true, sameDevice: Boolean(token && mine.t === token) };
     const taken = new Set(Object.values(claims).map(c => c.code));
     const code = codes.find(c => !taken.has(c));
     if (!code) return { ok: false, error: 'soldout' };

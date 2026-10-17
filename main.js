@@ -3,8 +3,9 @@ const GFORM = "https://docs.google.com/forms/d/e/1FAIpQLSfE_xgdVbnWvxjSlitcAfenj
 
 // Voucher cảm ơn: mỗi SĐT 1 mã riêng (300 mã tạo sẵn trên Shopify, chương trình "Khảo sát lần 2 - Giảm 20%").
 // claimUrl = API phát mã trên Vercel (api/claim.js). Để trống hoặc API lỗi thì khách nhận voucher qua Zalo.
+// Mở trang trên *.vercel.app thì gọi cùng địa chỉ (không qua CORS); còn lại gọi tên miền chính của API.
 const VOUCHER = {
-  claimUrl: "https://hussio-khao-sat.vercel.app/api/claim",
+  claimUrl: location.hostname.endsWith('.vercel.app') ? "/api/claim" : "https://hussio-khao-sat.vercel.app/api/claim",
   linkBase: "https://hussio.com/discount/",
   note: "Mỗi mã dùng 1 lần · Hiệu lực đến 23:59 ngày 16/11/2026 · Áp dụng cho mọi đơn hàng trên hussio.com"
 };
@@ -244,18 +245,42 @@ submitBtn.addEventListener('click', async () => {
 
   if (r.ok && r.code) {
     try { localStorage.setItem(CLAIM_KEY, JSON.stringify({ code: r.code, phone })); } catch {}
-    sendToGoogle();
-    showThanks('ok', r.code);
+    // SĐT đã nhận từ máy khác: hiện lại đúng mã cũ, không gửi phản hồi khảo sát trùng
+    const reused = r.again && !r.sameDevice;
+    if (!reused) sendToGoogle();
+    showThanks(reused ? 'used' : 'ok', r.code);
   } else if (r.error === 'phone') {
     showPhoneError('Số điện thoại chưa đúng, anh/chị kiểm tra lại giúp HUSSIO nhé.');
-  } else if (r.error === 'used') {
-    showThanks('used');   // SĐT đã làm khảo sát: không gửi phản hồi trùng
   } else if (r.error === 'soldout' || r.error === 'ended') {
     sendToGoogle();
     showThanks('soldout');
   } else {
+    // mạng lỗi: vẫn ghi phản hồi; máy chủ có thể đã phát mã, nút "Thử lại lấy mã" lấy lại bằng token của máy này
     sendToGoogle();
+    pendingPhone = phone;
     showThanks('fallback');
+  }
+});
+
+let pendingPhone = '';
+const retryBtn = document.getElementById('retryBtn');
+retryBtn.addEventListener('click', async () => {
+  if (!pendingPhone) return;
+  retryBtn.disabled = true;
+  retryBtn.textContent = 'Đang lấy mã...';
+  const r = await claimVoucher(pendingPhone);
+  retryBtn.disabled = false;
+  retryBtn.textContent = 'Thử lại lấy mã';
+  if (r.ok && r.code) {
+    try { localStorage.setItem(CLAIM_KEY, JSON.stringify({ code: r.code, phone: pendingPhone })); } catch {}
+    pendingPhone = '';
+    showThanks('ok', r.code);
+    document.getElementById('thanks').scrollTop = 0;
+  } else if (r.error === 'soldout' || r.error === 'ended') {
+    pendingPhone = '';
+    showThanks('soldout');
+  } else {
+    retryBtn.textContent = 'Mạng vẫn lỗi, bấm thử lại';
   }
 });
 
@@ -280,32 +305,32 @@ function sendToGoogle() {
 refresh();
 warmUp();
 
-// màn cảm ơn theo kết quả phát mã:
-// ok/again = có mã; used = SĐT đã nhận trước đó; soldout = hết mã hoặc hết hạn; fallback = lỗi mạng, nhận qua Zalo
+// màn cảm ơn theo kết quả phát mã (ok/again/used đều có mã):
+// ok = vừa nhận; again = máy này đã nhận; used = SĐT đã nhận ở máy khác, hiện lại mã cũ;
+// soldout = hết mã hoặc hết hạn; fallback = lỗi mạng, có nút "Thử lại lấy mã" và Zalo
 const THANKS_DESC = {
   ok: 'Phản hồi đã được ghi nhận — voucher <strong>giảm 20%</strong> là lời cảm ơn của HUSSIO dành cho anh/chị.',
   again: 'Thiết bị này đã nhận voucher <strong>giảm 20%</strong>. Đây là mã của anh/chị.',
-  used: 'Số điện thoại này đã nhận voucher trước đó. Nếu chưa lưu mã, anh/chị nhắn Zalo HUSSIO để CSKH gửi lại nhé.',
+  used: 'Số điện thoại này đã nhận voucher <strong>giảm 20%</strong> trước đó. Đây là mã của anh/chị.',
   soldout: 'Cảm ơn anh/chị đã góp ý! HUSSIO đã phát hết voucher của chương trình lần này.',
-  fallback: 'Phản hồi đã được ghi nhận — voucher <strong>giảm 20%</strong> là lời cảm ơn của HUSSIO dành cho anh/chị.'
+  fallback: 'Phản hồi đã được ghi nhận. Mạng đang chập chờn nên chưa tải được mã voucher <strong>giảm 20%</strong>, anh/chị bấm "Thử lại lấy mã" nhé.'
 };
 
 function showThanks(state, code) {
   const hasCode = Boolean(code);
   document.getElementById('thanksDesc').innerHTML = THANKS_DESC[state];
-  document.getElementById('thanksBanner').hidden = state === 'soldout' || state === 'used';
+  document.getElementById('thanksBanner').hidden = state === 'soldout';
   document.querySelector('.vopt-now').hidden = !hasCode;
   document.querySelector('.vopt-sep').hidden = !hasCode;
   document.querySelector('.vopt-later').hidden = state === 'soldout';
-  document.getElementById('captureBtn').hidden = state === 'used';
-  document.getElementById('laterTitle').textContent = state === 'used'
-    ? 'Cần CSKH gửi lại mã?'
-    : 'Chưa mua ngay? Lưu lại để dùng sau';
+  document.getElementById('captureBtn').hidden = !hasCode;
+  retryBtn.hidden = !(state === 'fallback' && pendingPhone);
+  document.getElementById('laterTitle').textContent = hasCode
+    ? 'Chưa mua ngay? Lưu lại để dùng sau'
+    : 'Chưa lấy được mã?';
   document.getElementById('laterSub').textContent = hasCode
     ? 'Chụp màn hình trang này để giữ mã. Cần hỗ trợ, anh/chị nhắn Zalo HUSSIO, CSKH sẽ gửi lại link voucher.'
-    : state === 'used'
-      ? 'Nhắn Zalo HUSSIO kèm số điện thoại đã đăng ký, CSKH sẽ kiểm tra và gửi lại mã.'
-      : 'Chụp màn hình trang này → Gửi ảnh cho HUSSIO qua Zalo → CSKH sẽ gửi voucher cho anh/chị.';
+    : 'Bấm "Thử lại lấy mã". Vẫn chưa được thì nhắn Zalo HUSSIO kèm số điện thoại vừa nhập, CSKH sẽ gửi mã cho anh/chị.';
   if (hasCode) {
     document.getElementById('vCode').textContent = code;
     document.querySelector('.btn-use-now').href = VOUCHER.linkBase + encodeURIComponent(code);

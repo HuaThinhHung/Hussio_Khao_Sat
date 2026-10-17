@@ -278,6 +278,8 @@ footer .addr{margin-top:6px;line-height:1.7}
 }
 .btn-use-now:hover{background:var(--gold-soft);transform:translateY(-2px);box-shadow:0 14px 28px -8px rgba(201,162,75,.55)}
 .btn-use-now:active{transform:translateY(0)}
+.btn-retry{border:none;cursor:pointer;font-family:inherit;margin-bottom:10px}
+.btn-retry:disabled{opacity:.6;cursor:wait;transform:none}
 
 /* separator */
 .vopt-sep{
