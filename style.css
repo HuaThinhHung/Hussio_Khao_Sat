@@ -160,6 +160,22 @@ main{position:relative}
 }
 .submit:hover{transform:translateY(-2px);background:var(--gold-soft);box-shadow:0 16px 40px -12px rgba(201,162,75,.6)}
 .submit:active{transform:translateY(0)}
+.submit:disabled{opacity:.6;cursor:wait;transform:none}
+
+/* SĐT nhận voucher */
+.phone-field{margin:30px auto 0;max-width:340px;text-align:left}
+.phone-field label{display:block;font-size:.8rem;letter-spacing:.06em;color:rgba(255,255,255,.7);margin-bottom:8px}
+.phone-field input{
+  width:100%;font:inherit;font-size:1.05rem;letter-spacing:.04em;color:#fff;
+  background:rgba(255,255,255,.06);border:1.5px solid rgba(255,255,255,.22);
+  border-radius:12px;padding:13px 16px;outline:none;
+  transition:border-color .25s var(--ease),background .25s var(--ease);
+}
+.phone-field input::placeholder{color:rgba(255,255,255,.3)}
+.phone-field input:focus{border-color:var(--gold);background:rgba(255,255,255,.1)}
+.phone-field input.err{border-color:#ff7b72}
+.phone-err{margin-top:8px;font-size:.8rem;color:#ff9b94}
+.phone-note{margin-top:8px;font-size:.76rem;color:rgba(255,255,255,.4)}
 .finish-note{
   margin-top:20px;font-size:.82rem;
   color:rgba(255,255,255,.3);letter-spacing:.01em;
@@ -248,6 +264,7 @@ footer .addr{margin-top:6px;line-height:1.7}
 .vopt-later .vopt-sub{color:var(--ink-2)}
 .vopt-sub strong{color:#fff;font-weight:700}
 .vopt-later .vopt-sub strong{color:var(--navy)}
+.vopt-now .voucher-code{font-size:.9rem;letter-spacing:.02em;word-break:break-all}
 
 /* btn — dùng ngay (gold) */
 .btn-use-now{

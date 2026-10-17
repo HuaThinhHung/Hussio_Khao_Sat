@@ -1,12 +1,14 @@
 // Google Form "Khảo Sát Hussio quý 2" (lần 2). Form phải được Xuất bản thì mới nhận câu trả lời.
 const GFORM = "https://docs.google.com/forms/d/e/1FAIpQLSfE_xgdVbnWvxjSlitcAfenjT5IWHxxS0pesPKhIM2LYWbS_w/formResponse";
 
-// Voucher cảm ơn. Điền link sau khi tạo mã giảm giá trên Shopify;
-// để trống thì ẩn nút "Dùng voucher ngay", khách vẫn nhận qua Zalo.
+// Voucher cảm ơn: mỗi SĐT 1 mã riêng (300 mã tạo sẵn trên Shopify, chương trình "Khảo sát lần 2 - Giảm 20%").
+// claimUrl = API phát mã trên Vercel (api/claim.js). Để trống hoặc API lỗi thì khách nhận voucher qua Zalo.
 const VOUCHER = {
-  link: "",      // vd "https://hussio.com/discount/MA-GIAM-GIA"
-  note: ""       // vd "Voucher có hiệu lực đến 31/12/2026 · Áp dụng cho đơn từ 250.000đ"
+  claimUrl: "https://hussio-khao-sat.vercel.app/api/claim",
+  linkBase: "https://hussio.com/discount/",
+  note: "Mỗi mã dùng 1 lần · Hiệu lực đến 23:59 ngày 16/11/2026 · Áp dụng cho mọi đơn hàng trên hussio.com"
 };
+const CLAIM_KEY = "hussio_ks2_voucher";
 
 // o: [chữ hiển thị, giá trị gửi về form]. Giá trị phải khớp từng ký tự với đáp án trong Google Form.
 const QUESTIONS = [
@@ -124,7 +126,51 @@ function collect() {
   });
 }
 
-document.getElementById('submitBtn').addEventListener('click', () => {
+const submitBtn = document.getElementById('submitBtn');
+const phoneInput = document.getElementById('phone');
+const phoneErr = document.getElementById('phoneErr');
+
+// SĐT di động VN về dạng 0xxxxxxxxx; sai định dạng trả "". Giống normalizePhone_ trong Apps Script.
+function normalizePhone(s) {
+  s = String(s || '').replace(/[\s.\-()]/g, '');
+  if (s.startsWith('+84')) s = '0' + s.slice(3);
+  else if (s.startsWith('84') && s.length === 11) s = '0' + s.slice(2);
+  return /^0[35789]\d{8}$/.test(s) ? s : '';
+}
+
+function showPhoneError(msg) {
+  phoneErr.textContent = msg;
+  phoneErr.hidden = false;
+  phoneInput.classList.add('err');
+  phoneInput.focus();
+  phoneInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+phoneInput.addEventListener('input', () => {
+  phoneErr.hidden = true;
+  phoneInput.classList.remove('err');
+});
+
+function savedClaim() {
+  try { return JSON.parse(localStorage.getItem(CLAIM_KEY) || 'null'); } catch { return null; }
+}
+
+async function claimVoucher(phone) {
+  if (!VOUCHER.claimUrl) return { ok: false, error: 'offline' };
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 20000);
+  try {
+    // body chuỗi → Content-Type text/plain, không phát sinh preflight CORS với Apps Script
+    const res = await fetch(VOUCHER.claimUrl, { method: 'POST', body: JSON.stringify({ phone }), signal: ctrl.signal });
+    return await res.json();
+  } catch {
+    return { ok: false, error: 'network' };
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+submitBtn.addEventListener('click', async () => {
   let firstMissing = null;
   for (let i = 0; i < total; i++) {
     const inner = document.querySelector(`.q-inner[data-q="${i}"]`);
@@ -139,10 +185,41 @@ document.getElementById('submitBtn').addEventListener('click', () => {
     firstMissing.scrollIntoView({ behavior: 'smooth', block: 'center' });
     return;
   }
+  const phone = normalizePhone(phoneInput.value);
+  if (!phone) {
+    showPhoneError('Số điện thoại chưa đúng, anh/chị kiểm tra lại giúp HUSSIO nhé.');
+    return;
+  }
   window._answers = collect();
-  sendToGoogle();
-  document.getElementById('thanks').classList.add('show');
-  document.body.style.overflow = 'hidden';
+
+  // thiết bị này đã nhận mã: hiện lại mã cũ, không gửi thêm phản hồi
+  const saved = savedClaim();
+  if (saved && saved.code) {
+    showThanks('again', saved.code);
+    return;
+  }
+
+  submitBtn.disabled = true;
+  submitBtn.textContent = 'Đang tạo mã voucher...';
+  const r = await claimVoucher(phone);
+  submitBtn.disabled = false;
+  submitBtn.textContent = 'Gửi & nhận voucher';
+
+  if (r.ok && r.code) {
+    try { localStorage.setItem(CLAIM_KEY, JSON.stringify({ code: r.code, phone })); } catch {}
+    sendToGoogle();
+    showThanks('ok', r.code);
+  } else if (r.error === 'phone') {
+    showPhoneError('Số điện thoại chưa đúng, anh/chị kiểm tra lại giúp HUSSIO nhé.');
+  } else if (r.error === 'used') {
+    showThanks('used');   // SĐT đã làm khảo sát: không gửi phản hồi trùng
+  } else if (r.error === 'soldout' || r.error === 'ended') {
+    sendToGoogle();
+    showThanks('soldout');
+  } else {
+    sendToGoogle();
+    showThanks('fallback');
+  }
 });
 
 function sendToGoogle() {
@@ -165,15 +242,59 @@ function sendToGoogle() {
 
 refresh();
 
-// voucher cảm ơn: link dùng ngay + ghi chú hạn dùng lấy từ VOUCHER
-if (VOUCHER.link) {
-  document.querySelector('.btn-use-now').href = VOUCHER.link;
-} else {
-  document.querySelector('.vopt-now').hidden = true;
-  document.querySelector('.vopt-sep').hidden = true;
+// màn cảm ơn theo kết quả phát mã:
+// ok/again = có mã; used = SĐT đã nhận trước đó; soldout = hết mã hoặc hết hạn; fallback = lỗi mạng, nhận qua Zalo
+const THANKS_DESC = {
+  ok: 'Phản hồi đã được ghi nhận — voucher <strong>giảm 20%</strong> là lời cảm ơn của HUSSIO dành cho anh/chị.',
+  again: 'Thiết bị này đã nhận voucher <strong>giảm 20%</strong>. Đây là mã của anh/chị.',
+  used: 'Số điện thoại này đã nhận voucher trước đó. Nếu chưa lưu mã, anh/chị nhắn Zalo HUSSIO để CSKH gửi lại nhé.',
+  soldout: 'Cảm ơn anh/chị đã góp ý! HUSSIO đã phát hết voucher của chương trình lần này.',
+  fallback: 'Phản hồi đã được ghi nhận — voucher <strong>giảm 20%</strong> là lời cảm ơn của HUSSIO dành cho anh/chị.'
+};
+
+function showThanks(state, code) {
+  const hasCode = Boolean(code);
+  document.getElementById('thanksDesc').innerHTML = THANKS_DESC[state];
+  document.getElementById('thanksBanner').hidden = state === 'soldout' || state === 'used';
+  document.querySelector('.vopt-now').hidden = !hasCode;
+  document.querySelector('.vopt-sep').hidden = !hasCode;
+  document.querySelector('.vopt-later').hidden = state === 'soldout';
+  document.getElementById('captureBtn').hidden = state === 'used';
+  document.getElementById('laterTitle').textContent = state === 'used'
+    ? 'Cần CSKH gửi lại mã?'
+    : 'Chưa mua ngay? Lưu lại để dùng sau';
+  document.getElementById('laterSub').textContent = hasCode
+    ? 'Chụp màn hình trang này để giữ mã. Cần hỗ trợ, anh/chị nhắn Zalo HUSSIO, CSKH sẽ gửi lại link voucher.'
+    : state === 'used'
+      ? 'Nhắn Zalo HUSSIO kèm số điện thoại đã đăng ký, CSKH sẽ kiểm tra và gửi lại mã.'
+      : 'Chụp màn hình trang này → Gửi ảnh cho HUSSIO qua Zalo → CSKH sẽ gửi voucher cho anh/chị.';
+  if (hasCode) {
+    document.getElementById('vCode').textContent = code;
+    document.querySelector('.btn-use-now').href = VOUCHER.linkBase + encodeURIComponent(code);
+  }
+  const hint = document.querySelector('.thanks-hint');
+  hint.textContent = VOUCHER.note;
+  hint.hidden = !hasCode;
+  document.getElementById('thanks').classList.add('show');
+  document.body.style.overflow = 'hidden';
 }
-const vHint = document.querySelector('.thanks-hint');
-if (VOUCHER.note) vHint.textContent = VOUCHER.note; else vHint.hidden = true;
+
+document.getElementById('copyBtn').addEventListener('click', async () => {
+  const btn = document.getElementById('copyBtn');
+  const code = document.getElementById('vCode').textContent;
+  try {
+    await navigator.clipboard.writeText(code);
+  } catch {
+    const r = document.createRange();
+    r.selectNodeContents(document.getElementById('vCode'));
+    getSelection().removeAllRanges();
+    getSelection().addRange(r);
+    document.execCommand('copy');
+  }
+  btn.textContent = 'Đã chép';
+  btn.classList.add('copied');
+  setTimeout(() => { btn.textContent = 'Sao chép'; btn.classList.remove('copied'); }, 1800);
+});
 
 // screenshot button
 document.getElementById('captureBtn').addEventListener('click', async () => {

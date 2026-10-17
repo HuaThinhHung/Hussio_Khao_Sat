@@ -44,7 +44,13 @@
   <span class="wordmark">HUSSIO</span>
   <h2>Sẵn sàng gửi<br>phản hồi chưa?</h2>
   <p class="answered">Đã trả lời <b id="fcount">0</b> / 12 câu hỏi</p>
-  <button class="submit" id="submitBtn">Gửi phản hồi</button>
+  <div class="phone-field">
+    <label for="phone">Số điện thoại nhận voucher</label>
+    <input type="tel" id="phone" inputmode="tel" autocomplete="tel" placeholder="VD: 0912 345 678" maxlength="16">
+    <p class="phone-err" id="phoneErr" hidden></p>
+    <p class="phone-note">Mỗi số điện thoại nhận 1 mã giảm 20%, mã dùng được 1 lần.</p>
+  </div>
+  <button class="submit" id="submitBtn">Gửi &amp; nhận voucher</button>
   <p class="finish-note">Chúng tôi đọc từng phản hồi và cải thiện từng ngày.</p>
 </section>
 
@@ -63,16 +69,20 @@
     </div>
     <div class="wordmark">HUSSIO</div>
     <h2>Cảm ơn anh/chị!</h2>
-    <p class="thanks-desc">Phản hồi đã được ghi nhận — voucher <strong>giảm 20%</strong> là lời cảm ơn của HUSSIO dành cho anh/chị.</p>
+    <p class="thanks-desc" id="thanksDesc">Phản hồi đã được ghi nhận — voucher <strong>giảm 20%</strong> là lời cảm ơn của HUSSIO dành cho anh/chị.</p>
 
-    <img src="images/banner-cam-on.webp" alt="HUSSIO Voucher 20%" class="thanks-banner" width="1920" height="900">
+    <img src="images/banner-cam-on.webp" alt="HUSSIO Voucher 20%" class="thanks-banner" id="thanksBanner" width="1920" height="900">
 
     <!-- Option A: Dùng ngay -->
     <div class="vopt vopt-now">
       <div class="vopt-head">
         <span class="vopt-badge">Mua ngay</span>
-        <p class="vopt-title">Áp dụng voucher ngay lúc thanh toán</p>
-        <p class="vopt-sub">Nhấn nút bên dưới — voucher <strong>20%</strong> sẽ tự động được áp dụng khi anh/chị thanh toán trên hussio.com</p>
+        <p class="vopt-title">Mã voucher riêng của anh/chị</p>
+        <p class="vopt-sub">Nhấn nút bên dưới, mã <strong>20%</strong> sẽ tự áp dụng khi thanh toán trên hussio.com. Hoặc nhập mã ở bước thanh toán.</p>
+      </div>
+      <div class="voucher-row">
+        <span class="voucher-code" id="vCode"></span>
+        <button class="btn-copy" id="copyBtn" type="button">Sao chép</button>
       </div>
       <a class="btn-use-now" href="#" target="_blank" rel="noopener">
         <svg viewBox="0 0 24 24" fill="none" width="18" height="18"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><line x1="3" y1="6" x2="21" y2="6" stroke="currentColor" stroke-width="1.8"/><path d="M16 10a4 4 0 0 1-8 0" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -86,8 +96,8 @@
     <div class="vopt vopt-later">
       <div class="vopt-head">
         <span class="vopt-badge vopt-badge--outline">Lưu dùng sau</span>
-        <p class="vopt-title">Chưa mua ngay? Lưu lại để dùng sau</p>
-        <p class="vopt-sub">Chụp màn hình trang này → Gửi ảnh cho HUSSIO qua Zalo → CSKH sẽ gửi lại link voucher bất kỳ khi nào anh/chị cần</p>
+        <p class="vopt-title" id="laterTitle">Chưa mua ngay? Lưu lại để dùng sau</p>
+        <p class="vopt-sub" id="laterSub">Chụp màn hình trang này để giữ mã. Cần hỗ trợ, anh/chị nhắn Zalo HUSSIO, CSKH sẽ gửi lại link voucher.</p>
       </div>
       <button class="btn-capture" id="captureBtn">
         <svg viewBox="0 0 24 24" fill="none" width="18" height="18"><rect x="3" y="5" width="18" height="14" rx="2" stroke="currentColor" stroke-width="1.8"/><circle cx="12" cy="12" r="3.5" stroke="currentColor" stroke-width="1.8"/><path d="M9 5l1.5-2h3L15 5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
