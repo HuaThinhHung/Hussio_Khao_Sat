@@ -14,7 +14,7 @@ import { claim, stats, normalizePhone } from './_voucher.js';
 const STATE_PATH = 'ks20/claims.json';
 // Làm mới kho một lần: file chưa mang RESET_ID này thì các lượt nhận cũ (lượt thử nội bộ) được chuyển vào
 // "archived" và mã được trả về kho. Không xoá dữ liệu; đổi chuỗi này chỉ khi thật sự muốn làm mới lần nữa.
-const RESET_ID = '2026-10-18-xoa-luot-thu-noi-bo';
+const RESET_ID = '2026-10-19-xoa-toan-bo-luot-thu';
 // các địa chỉ đọc được kết quả API: tên miền chính, mọi link *.vercel.app của project (kể cả link deploy riêng),
 // và máy tính chạy thử. Thiếu địa chỉ nào thì trình duyệt chặn đọc kết quả dù máy chủ đã phát mã.
 const ORIGINS = [

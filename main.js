@@ -9,8 +9,8 @@ const VOUCHER = {
   linkBase: "https://hussio.com/discount/",
   note: "Mỗi mã dùng 1 lần · Hiệu lực đến 23:59 ngày 16/11/2026 · Áp dụng cho mọi đơn hàng trên hussio.com"
 };
-// _v2: bỏ qua mã đã lưu trong trình duyệt từ các lượt thử trước ngày 18/10/2026 (các mã đó đã trả về kho)
-const CLAIM_KEY = "hussio_ks2_voucher_v2";
+// _v3: bỏ qua mã đã lưu trong trình duyệt từ các lượt thử trước ngày 19/10/2026 (các mã đó đã trả về kho)
+const CLAIM_KEY = "hussio_ks2_voucher_v3";
 const TOKEN_KEY = "hussio_ks2_token";
 
 // o: [chữ hiển thị, giá trị gửi về form]. Giá trị phải khớp từng ký tự với đáp án trong Google Form.
