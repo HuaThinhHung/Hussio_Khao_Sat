@@ -327,6 +327,35 @@ footer .addr{margin-top:6px;line-height:1.7}
   color:var(--ink-2);text-align:center;line-height:1.6;
 }
 
+/* ---------- cửa hàng (cuối màn cảm ơn) ---------- */
+.store{
+  width:100%;border-radius:18px;padding:20px;margin-top:18px;text-align:left;
+  background:#fff;border:1px solid var(--line);
+  box-shadow:0 4px 20px -8px rgba(10,37,64,.12);
+}
+.store-map{
+  margin-top:4px;border-radius:12px;overflow:hidden;
+  aspect-ratio:4/3;background:var(--line);
+}
+.store-map iframe{width:100%;height:100%;border:0;display:block}
+.store-addr{
+  display:flex;align-items:flex-start;gap:8px;margin-top:14px;
+  font-size:.9rem;font-weight:600;line-height:1.45;color:var(--navy);
+}
+.store-addr svg{flex-shrink:0;margin-top:1px}
+.store-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px}
+.btn-store{
+  display:flex;align-items:center;justify-content:center;gap:8px;
+  color:var(--navy);border:1.5px solid var(--navy);text-decoration:none;
+  font-size:.88rem;font-weight:700;padding:12px 10px;border-radius:14px;
+  white-space:nowrap;
+  transition:background .25s var(--ease),color .25s var(--ease),transform .2s var(--ease);
+}
+.btn-store:hover{background:var(--navy);color:#fff;transform:translateY(-2px)}
+.btn-store:active{transform:translateY(0)}
+.btn-store--solid{background:var(--navy);color:#fff}
+.btn-store--solid:hover{background:var(--navy-deep)}
+
 /* ---------- voucher card ---------- */
 .voucher{
   margin-top:22px;width:100%;border-radius:20px;overflow:hidden;

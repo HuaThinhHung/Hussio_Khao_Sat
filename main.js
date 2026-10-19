@@ -339,6 +339,9 @@ function showThanks(state, code) {
   const hint = document.querySelector('.thanks-hint');
   hint.textContent = VOUCHER.note;
   hint.hidden = !hasCode;
+  // bản đồ Google nặng: chỉ tải khi màn cảm ơn mở
+  const map = document.getElementById('storeMap');
+  if (!map.src) map.src = map.dataset.src;
   document.getElementById('thanks').classList.add('show');
   document.body.style.overflow = 'hidden';
 }
@@ -373,7 +376,8 @@ document.getElementById('captureBtn').addEventListener('click', async () => {
       useCORS: true,
       backgroundColor: '#EDEEF1',
       logging: false,
-      ignoreElements: el => el.id === 'captureBtn'
+      // khung bản đồ Google không chụp được, bỏ ra khỏi ảnh để ảnh chỉ giữ mã voucher
+      ignoreElements: el => el.id === 'captureBtn' || el.id === 'storeCard'
     });
 
     const url = canvas.toDataURL('image/png');
