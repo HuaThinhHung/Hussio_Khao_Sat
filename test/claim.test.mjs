@@ -55,3 +55,12 @@ test('SĐT giữ chỗ thấy đúng mã CSKH đã gửi; SĐT sai bị từ ch�
   assert.equal((await claim(kv, CODES, '0123', new Date(), '', RES)).error, 'phone');
   assert.equal((await claim(kv, CODES, '0912345678', new Date('2026-12-01'), '', RES)).error, 'ended');
 });
+
+test('lookup (mở lại trang): chỉ tra mã đã có, không bao giờ phát mã mới', async () => {
+  const kv = memoryKv();
+  assert.equal((await claim(kv, CODES, '0912345678', new Date(), TOK, RES, '', true)).error, 'none');
+  assert.equal((await kv.list(P_CODE)).length, 0);
+  const first = await claim(kv, CODES, '0912345678', new Date(), TOK, RES);
+  assert.equal((await claim(kv, CODES, '0912345678', new Date(), TOK, RES, '', true)).code, first.code);
+  assert.equal((await claim(kv, CODES, '0985813085', new Date(), '', RES, '', true)).code, CODES[1]);
+});

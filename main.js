@@ -193,12 +193,12 @@ function warmUp() {
   fetch(VOUCHER.claimUrl + '?ping=1').catch(() => {});
 }
 
-async function claimOnce(phone) {
+async function claimOnce(phone, lookup = false) {
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), 15000);
   try {
     // body chuỗi → Content-Type text/plain, không phát sinh preflight CORS
-    const res = await fetch(VOUCHER.claimUrl, { method: 'POST', body: JSON.stringify({ phone, token: deviceToken(), sid: submissionId() }), signal: ctrl.signal });
+    const res = await fetch(VOUCHER.claimUrl, { method: 'POST', body: JSON.stringify({ phone, token: deviceToken(), sid: submissionId(), lookup }), signal: ctrl.signal });
     if (!res.ok) return { ok: false, error: 'network' };
     return await res.json();
   } catch {
@@ -209,7 +209,7 @@ async function claimOnce(phone) {
 }
 
 // mạng yếu: thử tối đa 3 lần; các lỗi có nghĩa (SĐT sai, đã nhận, hết mã...) trả về ngay
-async function claimVoucher(phone) {
+async function claimVoucher(phone, lookup = false) {
   if (!VOUCHER.claimUrl) return { ok: false, error: 'offline' };
   let r;
   for (let attempt = 0; attempt < 3; attempt++) {
@@ -217,7 +217,7 @@ async function claimVoucher(phone) {
       submitBtn.textContent = 'Mạng chậm, đang thử lại...';
       await new Promise(res => setTimeout(res, attempt * 1500));
     }
-    r = await claimOnce(phone);
+    r = await claimOnce(phone, lookup);
     if (r.ok || (r.error !== 'network' && r.error !== 'busy')) return r;
   }
   return r;
@@ -253,12 +253,16 @@ submitBtn.addEventListener('click', async () => {
   // thiết bị này đã nhận mã: hỏi lại máy chủ mã của SĐT đã nhận (máy chủ là nguồn sự thật), không gửi thêm phản hồi
   const saved = savedClaim();
   if (saved && saved.phone) {
-    const again = await claimVoucher(saved.phone);
-    submitting = false;
-    submitBtn.disabled = false;
-    submitBtn.textContent = 'Gửi & nhận voucher';
-    showThanks('again', again.ok && again.code ? again.code : saved.code);
-    return;
+    const again = await claimVoucher(saved.phone, true);   // chỉ tra, không xin mã mới
+    if (again.error === 'none') {
+      try { localStorage.removeItem(CLAIM_KEY); } catch {}   // mã cũ không còn trên máy chủ → làm như khách mới
+    } else {
+      submitting = false;
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Gửi & nhận voucher';
+      showThanks('again', again.ok && again.code ? again.code : saved.code);
+      return;
+    }
   }
 
   const r = await claimVoucher(phone);
@@ -289,10 +293,12 @@ submitBtn.addEventListener('click', async () => {
 (async () => {
   const saved = savedClaim();
   if (!saved || !saved.phone) return;
-  const r = await claimVoucher(saved.phone);
+  const r = await claimVoucher(saved.phone, true);   // chỉ tra, không bao giờ xin mã mới
   if (r.ok && r.code) {
     try { localStorage.setItem(CLAIM_KEY, JSON.stringify({ code: r.code, phone: saved.phone })); } catch {}
     showThanks('again', r.code);
+  } else if (r.error === 'none') {
+    try { localStorage.removeItem(CLAIM_KEY); } catch {}   // mã cũ không còn trên máy chủ: cho làm khảo sát như khách mới
   }
 })();
 

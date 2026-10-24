@@ -29,7 +29,8 @@ const clean = (v, re) => (re.test(String(v || '')) ? String(v) : '');
 // SĐT đã nhận → trả lại đúng mã cũ (again: true). Đồng thời / bấm 2 lần / mạng thử lại đều ra cùng 1 mã.
 // token: chuỗi ngẫu nhiên của từng trình duyệt; sid: mã lượt khảo sát (web tạo). Lưu kèm để đối soát.
 // reserved: { "<SĐT>": "<mã>" } mã đã phát ngoài kho v2 (CSKH gửi tay, lượt cũ).
-export async function claim(kv, codes, rawPhone, now = new Date(), token = '', reserved = {}, sid = '') {
+// lookup = true: chỉ tra mã đã có (web gọi khi mở lại trang), không bao giờ phát mã mới → { ok: false, error: 'none' }.
+export async function claim(kv, codes, rawPhone, now = new Date(), token = '', reserved = {}, sid = '', lookup = false) {
   const phone = normalizePhone(rawPhone);
   if (!phone) return { ok: false, error: 'phone' };
   token = clean(token, /^[\w-]{16,64}$/);
@@ -38,6 +39,7 @@ export async function claim(kv, codes, rawPhone, now = new Date(), token = '', r
   if (reserved[phone]) return { ok: true, code: reserved[phone], again: true, sameDevice: false };
   const mine = await kv.get(P_PHONE + phone + '.json');
   if (mine && mine.code) return { ok: true, code: mine.code, again: true, sameDevice: Boolean(token && mine.t === token) };
+  if (lookup) return { ok: false, error: 'none' };
   if (now > END_AT) return { ok: false, error: 'ended' };
 
   const blocked = new Set(Object.values(reserved));

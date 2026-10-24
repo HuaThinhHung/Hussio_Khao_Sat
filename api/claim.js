@@ -11,7 +11,7 @@
 import { timingSafeEqual } from 'node:crypto';
 import { get, put, list, del } from '@vercel/blob';
 import { waitUntil } from '@vercel/functions';
-import { claim, stats, normalizePhone, issuedWithTime, P_MAP } from './_voucher.js';
+import { claim, stats, normalizePhone, issuedWithTime, P_MAP, P_PHONE, P_CODE, P_SYNC } from './_voucher.js';
 import * as sheet from './_sheet.js';
 import { syncEntries, resyncAll, syncStatus } from './_sync.js';
 
@@ -142,6 +142,18 @@ export default async function handler(req, res) {
   try {
     const params = new URL(req.url || '/', 'http://x').searchParams;
     if (req.method === 'GET' && params.has('ping')) return res.status(200).json({ ok: true });
+    // TẠM (24/10/2026): trả mã C9PQ8J bị phát nhầm cho SĐT test 0900000302 (trang mở lại tự xin mã). Gỡ ngay sau khi chạy.
+    if (req.method === 'GET' && params.has('cleanup-test')) {
+      const released = [];
+      for (const p of ['0900000302', '0900000301', '0900000303']) {
+        const rec = await kv.get(P_PHONE + p + '.json');
+        if (!rec || !rec.code) continue;
+        await del([P_PHONE + p + '.json', P_CODE + rec.code + '.json', P_MAP + rec.code + '__' + p, P_SYNC + p + '.json']).catch(() => {});
+        released.push(rec.code);
+      }
+      statsCache = null;
+      return res.status(200).json({ ok: true, released });
+    }
     // bảng Mã/SĐT/Thời gian cho Google Sheet (IMPORTDATA). Sai khoá → 401. CDN giữ 5 phút để Google tải lại
     // nhiều lần cũng chỉ tốn ít lượt list Blob.
     if (req.method === 'GET' && params.get('export') === 'csv') {
@@ -166,7 +178,7 @@ export default async function handler(req, res) {
     if (limited(ip)) return res.status(200).json({ ok: false, error: 'limit' });
 
     const now = new Date();
-    const result = await claim(kv, pool, body.phone, now, body.token, RESERVED, body.sid);
+    const result = await claim(kv, pool, body.phone, now, body.token, RESERVED, body.sid, body.lookup === true);
     // mã đã lưu xong trong Blob → trả cho khách ngay; ghi Sheet chạy nền (Vercel giữ hàm sống tới khi xong)
     if (result.ok && result.isNew) {
       statsCache = null;
