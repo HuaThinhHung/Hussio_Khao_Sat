@@ -1,76 +1,58 @@
-// POST /api/claim  body {"phone": "...", "token": "..."} → { ok, code, again?, sameDevice? }
+// POST /api/claim  body {"phone", "token", "sid"} → { ok, code, again?, sameDevice? }
 //                  | { ok: false, error: phone|ended|soldout|busy|limit }   (SĐT đã nhận → again: true, cùng mã cũ)
-// GET  /api/claim  → số mã đã phát / còn lại (không lộ SĐT, mã).
-// GET  /api/claim?resync → ghi bù vào Sheet các mã đã phát mà form ẩn chưa nhận được.
-// GET  /api/claim?ping=1 → { ok: true }: web gọi khi khách mở trang để máy chủ khởi động sẵn, không đọc kho.
+// GET  /api/claim            → số mã đã phát / còn lại (không lộ SĐT, mã).
+// GET  /api/claim?ping=1     → { ok: true }: web gọi khi khách mở trang để máy chủ khởi động sẵn, không đọc kho.
+// GET  /api/claim?sync-status | ?resync[&force=1]   (cần quyền quản trị, xem isAdmin)
+//      sync-status: đếm SYNCED / PENDING / FAILED / NEEDS_REVIEW; resync: ghi lại Sheet các mã chưa SYNCED.
 // Chạy ở vùng sin1 (vercel.json), cùng vùng với kho Blob.
-// Kho: Vercel Blob private "hussio-voucher-ks20", mỗi SĐT/mã 1 file (xem _voucher.js) (BLOB_STORE_ID, xác thực OIDC). 300 mã nằm trong env KS20_CODES.
-// Phát mã xong thì ghi thêm Mã + SĐT vào form ẩn "HUSSIO - Sổ phát voucher khảo sát lần 2 (nội bộ)",
-// form này đổ vào Google Sheet "HUSSIO - Kho mã voucher khảo sát lần 2 (20%)" để CSKH đối chiếu.
-// Blob vẫn là nguồn chống trùng; Sheet chỉ là bản để xem.
+// Nguồn sự thật: Vercel Blob private "hussio-voucher-ks20" (BLOB_STORE_ID, OIDC), xem _voucher.js. 300 mã trong env KS20_CODES.
+// Sheet "Kho mã" chỉ là bản soi, ghi bằng Google Sheets API (_sheet.js) sau khi mã đã lưu xong; lỗi Sheet không ảnh hưởng khách.
+import { timingSafeEqual } from 'node:crypto';
 import { get, put, list, del } from '@vercel/blob';
 import { waitUntil } from '@vercel/functions';
-import { claim, stats, normalizePhone, P_PHONE } from './_voucher.js';
+import { claim, stats, normalizePhone, P_MAP } from './_voucher.js';
+import * as sheet from './_sheet.js';
+import { syncEntries, resyncAll, syncStatus } from './_sync.js';
 
-// Mã đã phát ngoài kho v2: lượt cũ còn hiệu lực ở kho v1 (ks20/claims.json, giữ nguyên làm lưu trữ)
-// và mã CSKH gửi tay theo Sheet ngày 24/10/2026. Các SĐT này nhập lại sẽ thấy đúng mã cũ; các mã này không phát lại.
+// Mã đã phát ngoài kho v2: lượt cũ ở kho v1 (ks20/claims.json, giữ nguyên làm lưu trữ) và mã CSKH gửi tay
+// (Sheet "Câu trả lời biểu mẫu 1" ngày 24/10/2026). SĐT này nhập lại thấy đúng mã cũ; các mã này không phát lại.
+// CSKH gửi tay thêm mã nào thì phải ghi vào đây, nếu không hệ thống có thể phát trùng.
 const RESERVED = {
   '0866865440': 'HUSSIO_KS20_27342X',
   '0985813085': 'HUSSIO_KS20_ZMRZ2U',
   '0982825284': 'HUSSIO_KS20_ZHNUHD'
 };
-// các địa chỉ đọc được kết quả API: tên miền chính, mọi link *.vercel.app của project (kể cả link deploy riêng),
-// và máy tính chạy thử. Thiếu địa chỉ nào thì trình duyệt chặn đọc kết quả dù máy chủ đã phát mã.
+const RESERVED_AT = {
+  '0866865440': '2026-10-19T08:34:23Z',
+  '0985813085': '2026-10-24T03:00:00Z',
+  '0982825284': '2026-10-24T03:00:00Z'
+};
+// các địa chỉ đọc được kết quả API: tên miền chính, mọi link *.vercel.app của project, máy tính chạy thử.
 const ORIGINS = [
   /^https?:\/\/khaosat\.hussio-vn\.com$/,
   /^https:\/\/hussio-khao-[a-z0-9-]+\.vercel\.app$/,
   /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/
 ];
+
+// Form ẩn "Sổ phát voucher" chỉ còn là bản soi tuỳ chọn (bật bằng env LOG_FORM_MIRROR=1).
+// Từ 24/10/2026 form này trả 401 và tab nhận của nó đã thành bảng CSKH nhập tay, nên mặc định tắt.
 const LOG_FORM = 'https://docs.google.com/forms/d/e/1FAIpQLSd5jNwiQDPCL0h3v7uMFkHdViMFl8inid_u5-Ga9677sxxSnA/formResponse';
-const LOG_CODE = 'entry.1391917465';
-const LOG_PHONE = 'entry.1294366895';
-
-// lỗi ghi Sheet không làm hỏng việc phát mã: khách vẫn nhận mã, Blob vẫn giữ SĐT ↔ mã.
-// Ghi được thì tạo file đánh dấu ks20/v2/logged/<sđt>; GET ?resync ghi bù mọi SĐT chưa có dấu
-// (dùng khi form ẩn bị khoá rồi mở lại: form trả 401 nếu Người trả lời bị đặt "Hạn chế").
-const P_LOGGED = 'ks20/v2/logged/';
-async function logToSheet(code, phone, mark = true) {
+async function mirrorToForm(code, phone) {
+  if (process.env.LOG_FORM_MIRROR !== '1') return;
   try {
-    const res = await fetch(LOG_FORM, {
-      method: 'POST',
-      body: new URLSearchParams({ [LOG_CODE]: code, [LOG_PHONE]: phone }),
-      signal: AbortSignal.timeout(5000)
-    });
-    if (!res.ok) { console.error('log sheet failed', res.status, code); return false; }
-    if (mark) await kv.create(P_LOGGED + phone + '.json', { code, at: new Date().toISOString() }).catch(() => {});
-    return true;
-  } catch (err) {
-    console.error('log sheet failed', code, err);
-    return false;
-  }
-}
-
-async function resync() {
-  const logged = new Set((await kv.list(P_LOGGED)).map(p => p.slice(P_LOGGED.length)));
-  const out = { sent: 0, failed: 0, already: logged.size };
-  for (const path of await kv.list(P_PHONE)) {
-    const file = path.slice(P_PHONE.length);
-    if (logged.has(file)) continue;
-    const rec = await kv.get(path);
-    if (!rec || !rec.code) continue;
-    if (await logToSheet(rec.code, file.replace(/\.json$/, ''))) out.sent++; else { out.failed++; break; }
-  }
-  return out;
+    const res = await fetch(LOG_FORM, { method: 'POST', body: new URLSearchParams({ 'entry.1391917465': code, 'entry.1294366895': phone }), signal: AbortSignal.timeout(5000) });
+    if (!res.ok) console.error('form mirror failed', res.status, code);
+  } catch (err) { console.error('form mirror failed', code, err); }
 }
 
 // Gói Hobby: Blob bị khoá 30 ngày nếu vượt 10.000 lượt đọc / 2.000 lượt ghi mỗi tháng.
-// Mỗi khách mới tốn 1 lượt đọc + 2 lượt ghi; số liệu thống kê (GET) giữ 30 giây.
+// Mỗi khách mới: 1 đọc + 4 ghi (mã, SĐT, cặp mã↔SĐT, trạng thái Sheet). Thống kê (GET) giữ 30 giây.
 let lastError = '';
 const kv = {
   async get(path) {
     const r = await get(path, { access: 'private', useCache: false });   // null khi chưa có file
     if (!r || r.statusCode !== 200) return null;
-    return JSON.parse(await new Response(r.stream).text());
+    return JSON.parse((await new Response(r.stream).text()) || 'null');
   },
   // chỉ tạo mới, không ghi đè: máy chủ Blob từ chối nếu file đã có → đây là chốt chống phát trùng
   async create(path, obj) {
@@ -83,6 +65,8 @@ const kv = {
       throw err;
     }
   },
+  // ghi đè được: chỉ dùng cho trạng thái đồng bộ Sheet, không dùng cho mã
+  set: (path, obj) => put(path, JSON.stringify(obj), { access: 'private', addRandomSuffix: false, allowOverwrite: true, contentType: 'application/json' }),
   async list(prefix) {
     const out = [];
     let cursor;
@@ -95,12 +79,25 @@ const kv = {
   },
   remove: path => del(path)
 };
+
 let statsCache = null;
 async function claimedCount() {
   if (statsCache && Date.now() - statsCache.at < 30_000) return statsCache.n;
-  const n = (await kv.list(P_PHONE)).length + Object.keys(RESERVED).length;
-  statsCache = { n, at: Date.now() };
-  return n;
+  const codes = new Set(Object.values(RESERVED));
+  for (const p of await kv.list(P_MAP)) codes.add(p.slice(P_MAP.length).split('__')[0]);
+  statsCache = { n: codes.size, at: Date.now() };
+  return statsCache.n;
+}
+
+// quản trị: header x-admin-key = env KS20_ADMIN_KEY, hoặc Vercel Cron gửi "Bearer <CRON_SECRET>".
+function same(a, b) {
+  const x = Buffer.from(String(a || '')), y = Buffer.from(String(b || ''));
+  return x.length > 0 && x.length === y.length && timingSafeEqual(x, y);
+}
+function isAdmin(req) {
+  const env = process.env;
+  return Boolean((env.KS20_ADMIN_KEY && same(req.headers['x-admin-key'], env.KS20_ADMIN_KEY)) ||
+    (env.CRON_SECRET && same(req.headers.authorization, 'Bearer ' + env.CRON_SECRET)));
 }
 
 // chặn 1 IP gọi dồn dập: tối đa 30 lượt / 10 phút trên mỗi máy chủ đang chạy.
@@ -108,11 +105,11 @@ async function claimedCount() {
 const hits = new Map();
 function limited(ip) {
   const now = Date.now();
-  const list = (hits.get(ip) || []).filter(t => now - t < 600_000);
-  list.push(now);
-  hits.set(ip, list);
+  const arr = (hits.get(ip) || []).filter(t => now - t < 600_000);
+  arr.push(now);
+  hits.set(ip, arr);
   if (hits.size > 5000) hits.clear();
-  return list.length > 30;
+  return arr.length > 30;
 }
 
 function codes() {
@@ -134,25 +131,37 @@ export default async function handler(req, res) {
   if (!pool.length) return res.status(500).json({ ok: false, error: 'config' });
 
   try {
-    if (req.method === 'GET' && new URL(req.url || '/', 'http://x').searchParams.has('ping')) return res.status(200).json({ ok: true });
-    if (req.method === 'GET' && new URL(req.url || '/', 'http://x').searchParams.has('resync')) return res.status(200).json({ ok: true, ...(await resync()) });
+    const params = new URL(req.url || '/', 'http://x').searchParams;
+    if (req.method === 'GET' && params.has('ping')) return res.status(200).json({ ok: true });
+    if (params.has('resync') || params.has('sync-status')) {
+      if (!isAdmin(req)) return res.status(401).json({ ok: false, error: 'admin' });
+      if (params.has('sync-status')) return res.status(200).json({ ok: true, ...(await syncStatus(kv, RESERVED)) });
+      return res.status(200).json({ ok: true, ...(await resyncAll(kv, RESERVED, sheet, { force: params.get('force') === '1', reservedAt: RESERVED_AT })) });
+    }
     if (req.method === 'GET') return res.status(200).json(stats(await claimedCount(), pool));
     if (req.method !== 'POST') return res.status(405).json({ ok: false, error: 'method' });
 
     // web gửi text/plain để khỏi preflight CORS, nên body có thể là chuỗi JSON
     let body = req.body;
     if (typeof body === 'string') { try { body = JSON.parse(body); } catch { body = {}; } }
+    body = body || {};
     const ip = String(req.headers['x-forwarded-for'] || '').split(',')[0].trim() || 'unknown';
     if (limited(ip)) return res.status(200).json({ ok: false, error: 'limit' });
 
-    const result = await claim(kv, pool, body && body.phone, new Date(), body && body.token, RESERVED);
-    if (result.ok && !result.again) statsCache = null;
-    // trả mã cho khách ngay; ghi Sheet chạy nền sau khi đã trả lời (Vercel giữ hàm sống tới khi xong).
-    // Khách lấy lại mã từ máy khác cũng ghi thêm 1 dòng (Sheet tra dòng đầu tiên nên không lệch);
-    // chỉ bỏ qua khi chính máy đó thử lại vì mạng rớt, tránh dòng trùng.
-    if (result.ok && !(result.again && result.sameDevice)) waitUntil(logToSheet(result.code, normalizePhone(body.phone), !result.again));
-    if (!result.ok && result.error === 'busy') return res.status(200).json({ ...result, detail: lastError });
-    return res.status(200).json(result);
+    const now = new Date();
+    const result = await claim(kv, pool, body.phone, now, body.token, RESERVED, body.sid);
+    // mã đã lưu xong trong Blob → trả cho khách ngay; ghi Sheet chạy nền (Vercel giữ hàm sống tới khi xong)
+    if (result.ok && result.isNew) {
+      statsCache = null;
+      const phone = normalizePhone(body.phone);
+      waitUntil(Promise.all([
+        syncEntries(kv, [{ code: result.code, phone, at: now.toISOString() }], sheet).catch(err => console.error('sheet sync failed', err)),
+        mirrorToForm(result.code, phone)
+      ]));
+    }
+    const { isNew, ...out } = result;
+    if (!out.ok && out.error === 'busy') return res.status(200).json({ ...out, detail: lastError });
+    return res.status(200).json(out);
   } catch (err) {
     console.error('claim failed', err);
     lastError = `${err && err.name}: ${err && err.message}`.slice(0, 300);

@@ -133,11 +133,13 @@ const submitBtn = document.getElementById('submitBtn');
 const phoneInput = document.getElementById('phone');
 const phoneErr = document.getElementById('phoneErr');
 
-// SĐT di động VN về dạng 0xxxxxxxxx; sai định dạng trả "". Giống normalizePhone_ trong Apps Script.
+// SĐT di động VN về dạng 0xxxxxxxxx; sai định dạng trả "". Chép y hệt normalizePhone trong api/_voucher.js
+// (test/phone.test.mjs so 2 bản). Nhận 0982825284, 982825284, +84982825284, 84982825284.
 function normalizePhone(s) {
   s = String(s || '').replace(/[\s.\-()]/g, '');
-  if (s.startsWith('+84')) s = '0' + s.slice(3);
-  else if (s.startsWith('84') && s.length === 11) s = '0' + s.slice(2);
+  if (s.startsWith('+84')) s = s.slice(3);
+  else if (s.startsWith('84') && s.length === 11) s = s.slice(2);
+  if (/^[35789]\d{8}$/.test(s)) s = '0' + s;
   return /^0[35789]\d{8}$/.test(s) ? s : '';
 }
 
@@ -171,6 +173,18 @@ function deviceToken() {
   return window._deviceToken;
 }
 
+// mã lượt khảo sát: giữ nguyên qua các lần thử lại trong cùng phiên, máy chủ lưu kèm mã để đối soát
+function submissionId() {
+  let id = null;
+  try { id = sessionStorage.getItem('hussio_ks2_sid'); } catch {}
+  if (!id) {
+    id = crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2);
+    try { sessionStorage.setItem('hussio_ks2_sid', id); } catch {}
+  }
+  window._sid = window._sid || id;
+  return window._sid;
+}
+
 // đánh thức API sớm để lúc khách bấm gửi không phải chờ máy chủ khởi động (không đọc kho)
 let lastWarm = 0;
 function warmUp() {
@@ -184,7 +198,7 @@ async function claimOnce(phone) {
   const timer = setTimeout(() => ctrl.abort(), 15000);
   try {
     // body chuỗi → Content-Type text/plain, không phát sinh preflight CORS
-    const res = await fetch(VOUCHER.claimUrl, { method: 'POST', body: JSON.stringify({ phone, token: deviceToken() }), signal: ctrl.signal });
+    const res = await fetch(VOUCHER.claimUrl, { method: 'POST', body: JSON.stringify({ phone, token: deviceToken(), sid: submissionId() }), signal: ctrl.signal });
     if (!res.ok) return { ok: false, error: 'network' };
     return await res.json();
   } catch {
@@ -209,7 +223,9 @@ async function claimVoucher(phone) {
   return r;
 }
 
+let submitting = false;
 submitBtn.addEventListener('click', async () => {
+  if (submitting) return;   // bấm 2 lần: chỉ 1 yêu cầu
   let firstMissing = null;
   for (let i = 0; i < total; i++) {
     const inner = document.querySelector(`.q-inner[data-q="${i}"]`);
@@ -231,16 +247,22 @@ submitBtn.addEventListener('click', async () => {
   }
   window._answers = collect();
 
-  // thiết bị này đã nhận mã: hiện lại mã cũ, không gửi thêm phản hồi
+  submitting = true;
+  submitBtn.disabled = true;
+  submitBtn.textContent = 'Đang tạo mã voucher...';
+  // thiết bị này đã nhận mã: hỏi lại máy chủ mã của SĐT đã nhận (máy chủ là nguồn sự thật), không gửi thêm phản hồi
   const saved = savedClaim();
-  if (saved && saved.code) {
-    showThanks('again', saved.code);
+  if (saved && saved.phone) {
+    const again = await claimVoucher(saved.phone);
+    submitting = false;
+    submitBtn.disabled = false;
+    submitBtn.textContent = 'Gửi & nhận voucher';
+    showThanks('again', again.ok && again.code ? again.code : saved.code);
     return;
   }
 
-  submitBtn.disabled = true;
-  submitBtn.textContent = 'Đang tạo mã voucher...';
   const r = await claimVoucher(phone);
+  submitting = false;
   submitBtn.disabled = false;
   submitBtn.textContent = 'Gửi & nhận voucher';
 
@@ -262,6 +284,17 @@ submitBtn.addEventListener('click', async () => {
     showThanks('fallback');
   }
 });
+
+// mở lại / tải lại trang sau khi đã nhận mã: lấy lại mã hiện tại từ máy chủ, không tạo mã mới
+(async () => {
+  const saved = savedClaim();
+  if (!saved || !saved.phone) return;
+  const r = await claimVoucher(saved.phone);
+  if (r.ok && r.code) {
+    try { localStorage.setItem(CLAIM_KEY, JSON.stringify({ code: r.code, phone: saved.phone })); } catch {}
+    showThanks('again', r.code);
+  }
+})();
 
 let pendingPhone = '';
 const retryBtn = document.getElementById('retryBtn');

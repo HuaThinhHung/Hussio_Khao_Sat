@@ -5,5 +5,10 @@
   "dependencies": {
     "@vercel/blob": "2.8.0",
     "@vercel/functions": "3.9.8"
+  },
+  "scripts": {
+    "test": "node --test \"test/*.test.mjs\"",
+    "check": "node --check api/claim.js && node --check api/_voucher.js && node --check api/_sheet.js && node --check api/_sync.js && node --check main.js",
+    "build": "npm run check && npm test"
   }
 }
