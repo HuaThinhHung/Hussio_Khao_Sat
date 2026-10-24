@@ -83,7 +83,8 @@ async function claimedCount() {
   return n;
 }
 
-// chặn 1 IP gọi dồn dập: tối đa 10 lượt / 10 phút trên mỗi máy chủ đang chạy
+// chặn 1 IP gọi dồn dập: tối đa 30 lượt / 10 phút trên mỗi máy chủ đang chạy.
+// Không để thấp: mạng 4G ở VN cho nhiều thuê bao chung 1 IP, khách thật sẽ bị chặn oan.
 const hits = new Map();
 function limited(ip) {
   const now = Date.now();
@@ -91,7 +92,7 @@ function limited(ip) {
   list.push(now);
   hits.set(ip, list);
   if (hits.size > 5000) hits.clear();
-  return list.length > 10;
+  return list.length > 30;
 }
 
 function codes() {
