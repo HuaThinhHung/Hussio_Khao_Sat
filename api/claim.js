@@ -10,7 +10,7 @@
 import { timingSafeEqual } from 'node:crypto';
 import { get, put, list, del } from '@vercel/blob';
 import { waitUntil } from '@vercel/functions';
-import { claim, stats, normalizePhone, P_MAP } from './_voucher.js';
+import { claim, stats, normalizePhone, P_MAP, P_PHONE, P_CODE, P_SYNC } from './_voucher.js';
 import * as sheet from './_sheet.js';
 import { syncEntries, resyncAll, syncStatus } from './_sync.js';
 
@@ -18,12 +18,10 @@ import { syncEntries, resyncAll, syncStatus } from './_sync.js';
 // (Sheet "Câu trả lời biểu mẫu 1" ngày 24/10/2026). SĐT này nhập lại thấy đúng mã cũ; các mã này không phát lại.
 // CSKH gửi tay thêm mã nào thì phải ghi vào đây, nếu không hệ thống có thể phát trùng.
 const RESERVED = {
-  '0866865440': 'HUSSIO_KS20_27342X',
   '0985813085': 'HUSSIO_KS20_ZMRZ2U',
   '0982825284': 'HUSSIO_KS20_ZHNUHD'
 };
 const RESERVED_AT = {
-  '0866865440': '2026-10-19T08:34:23Z',
   '0985813085': '2026-10-24T03:00:00Z',
   '0982825284': '2026-10-24T03:00:00Z'
 };
@@ -133,6 +131,19 @@ export default async function handler(req, res) {
   try {
     const params = new URL(req.url || '/', 'http://x').searchParams;
     if (req.method === 'GET' && params.has('ping')) return res.status(200).json({ ok: true });
+    // TẠM (24/10/2026): xoá lượt thử của anh Hưng / kỹ thuật theo yêu cầu, trả mã về kho. Gỡ ngay sau khi chạy.
+    if (req.method === 'GET' && params.has('cleanup-test')) {
+      const released = [];
+      for (const p of ['0866865440', '0900000301', '0900000302', '0900000303']) {
+        const rec = await kv.get(P_PHONE + p + '.json');
+        if (!rec || !rec.code) continue;
+        await del([P_PHONE + p + '.json', P_CODE + rec.code + '.json', P_MAP + rec.code + '__' + p, P_SYNC + p + '.json']).catch(() => {});
+        released.push(rec.code);
+      }
+      statsCache = null;
+      const issued = (await kv.list(P_MAP)).map(x => x.slice(P_MAP.length).split('__')).map(([c, ph]) => c + ' · ' + ph.slice(0, 4) + '***' + ph.slice(-3));
+      return res.status(200).json({ ok: true, released, issued, reserved: Object.keys(RESERVED).length });
+    }
     if (params.has('resync') || params.has('sync-status')) {
       if (!isAdmin(req)) return res.status(401).json({ ok: false, error: 'admin' });
       if (params.has('sync-status')) return res.status(200).json({ ok: true, ...(await syncStatus(kv, RESERVED)) });
