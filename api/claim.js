@@ -3,18 +3,21 @@
 // GET  /api/claim  → số mã đã phát / còn lại (không lộ SĐT, mã).
 // GET  /api/claim?ping=1 → { ok: true }: web gọi khi khách mở trang để máy chủ khởi động sẵn, không đọc kho.
 // Chạy ở vùng sin1 (vercel.json), cùng vùng với kho Blob.
-// Kho: Vercel Blob private "hussio-voucher-ks20" (BLOB_STORE_ID, xác thực OIDC). 300 mã nằm trong env KS20_CODES.
+// Kho: Vercel Blob private "hussio-voucher-ks20", mỗi SĐT/mã 1 file (xem _voucher.js) (BLOB_STORE_ID, xác thực OIDC). 300 mã nằm trong env KS20_CODES.
 // Phát mã xong thì ghi thêm Mã + SĐT vào form ẩn "HUSSIO - Sổ phát voucher khảo sát lần 2 (nội bộ)",
 // form này đổ vào Google Sheet "HUSSIO - Kho mã voucher khảo sát lần 2 (20%)" để CSKH đối chiếu.
 // Blob vẫn là nguồn chống trùng; Sheet chỉ là bản để xem.
-import { get, put, BlobPreconditionFailedError } from '@vercel/blob';
+import { get, put, list, del } from '@vercel/blob';
 import { waitUntil } from '@vercel/functions';
-import { claim, stats, normalizePhone } from './_voucher.js';
+import { claim, stats, normalizePhone, P_PHONE } from './_voucher.js';
 
-const STATE_PATH = 'ks20/claims.json';
-// Làm mới kho một lần: file chưa mang RESET_ID này thì các lượt nhận cũ (lượt thử nội bộ) được chuyển vào
-// "archived" và mã được trả về kho. Không xoá dữ liệu; đổi chuỗi này chỉ khi thật sự muốn làm mới lần nữa.
-const RESET_ID = '2026-10-19-xoa-toan-bo-luot-thu';
+// Mã đã phát ngoài kho v2: lượt cũ còn hiệu lực ở kho v1 (ks20/claims.json, giữ nguyên làm lưu trữ)
+// và mã CSKH gửi tay theo Sheet ngày 24/10/2026. Các SĐT này nhập lại sẽ thấy đúng mã cũ; các mã này không phát lại.
+const RESERVED = {
+  '0866865440': 'HUSSIO_KS20_27342X',
+  '0985813085': 'HUSSIO_KS20_ZMRZ2U',
+  '0982825284': 'HUSSIO_KS20_ZHNUHD'
+};
 // các địa chỉ đọc được kết quả API: tên miền chính, mọi link *.vercel.app của project (kể cả link deploy riêng),
 // và máy tính chạy thử. Thiếu địa chỉ nào thì trình duyệt chặn đọc kết quả dù máy chủ đã phát mã.
 const ORIGINS = [
@@ -40,46 +43,45 @@ async function logToSheet(code, phone) {
   }
 }
 
-// Gói Hobby: Blob bị khoá 30 ngày nếu vượt 10.000 lượt đọc / 2.000 lượt ghi mỗi tháng,
-// nên giữ bản đọc gần nhất 10 giây. Bản cũ không gây phát trùng: ghi kèm ETag cũ sẽ bị từ chối rồi đọc lại.
-const CACHE_MS = 10_000;
-let cache = null;
-let lastWriteError = '';
-
-const store = {
-  async read(fresh) {
-    if (!fresh && cache && Date.now() - cache.at < CACHE_MS) return cache.state;
-    const r = await get(STATE_PATH, { access: 'private', useCache: false });   // null khi chưa có file
-    let state = null;
-    if (r && r.statusCode === 200) {
-      const data = JSON.parse(await new Response(r.stream).text());
-      let claims = data.claims || {};
-      let archived = data.archived || [];
-      if (data.resetId !== RESET_ID) {
-        if (Object.keys(claims).length) archived = [...archived, { resetId: RESET_ID, archivedAt: new Date().toISOString(), claims }];
-        claims = {};
-      }
-      state = { claims, archived, etag: r.blob.etag };
-    }
-    cache = { state, at: Date.now() };
-    return state;
+// Gói Hobby: Blob bị khoá 30 ngày nếu vượt 10.000 lượt đọc / 2.000 lượt ghi mỗi tháng.
+// Mỗi khách mới tốn 1 lượt đọc + 2 lượt ghi; số liệu thống kê (GET) giữ 30 giây.
+let lastError = '';
+const kv = {
+  async get(path) {
+    const r = await get(path, { access: 'private', useCache: false });   // null khi chưa có file
+    if (!r || r.statusCode !== 200) return null;
+    return JSON.parse(await new Response(r.stream).text());
   },
-  async write(claims, etag, prev) {
-    const archived = (prev && prev.archived) || [];
-    const opts = { access: 'private', addRandomSuffix: false, contentType: 'application/json' };
-    if (etag) opts.ifMatch = etag; else opts.allowOverwrite = false;
+  // chỉ tạo mới, không ghi đè: máy chủ Blob từ chối nếu file đã có → đây là chốt chống phát trùng
+  async create(path, obj) {
     try {
-      const res = await put(STATE_PATH, JSON.stringify({ resetId: RESET_ID, claims, archived }, null, 1), opts);
-      cache = { state: { claims, archived, etag: res.etag }, at: Date.now() };
+      await put(path, JSON.stringify(obj), { access: 'private', addRandomSuffix: false, allowOverwrite: false, contentType: 'application/json' });
+      return true;
     } catch (err) {
-      lastWriteError = `${err && err.name}: ${err && err.message}`.slice(0, 300);
-      console.error('blob write failed', lastWriteError);
-      // lệch ETag, hoặc 2 khách cùng ghi lần đầu khi chưa có file → đọc lại rồi ghi kèm ETag mới
-      if (err instanceof BlobPreconditionFailedError || !etag) err.conflict = true;
+      lastError = `${err && err.name}: ${err && err.message}`.slice(0, 300);
+      if (/exist|precondition|overwrite/i.test(String(err && err.message))) return false;
       throw err;
     }
-  }
+  },
+  async list(prefix) {
+    const out = [];
+    let cursor;
+    do {
+      const r = await list({ prefix, cursor, limit: 1000 });
+      out.push(...r.blobs.map(b => b.pathname));
+      cursor = r.hasMore ? r.cursor : undefined;
+    } while (cursor);
+    return out;
+  },
+  remove: path => del(path)
 };
+let statsCache = null;
+async function claimedCount() {
+  if (statsCache && Date.now() - statsCache.at < 30_000) return statsCache.n;
+  const n = (await kv.list(P_PHONE)).length + Object.keys(RESERVED).length;
+  statsCache = { n, at: Date.now() };
+  return n;
+}
 
 // chặn 1 IP gọi dồn dập: tối đa 10 lượt / 10 phút trên mỗi máy chủ đang chạy
 const hits = new Map();
@@ -112,7 +114,7 @@ export default async function handler(req, res) {
 
   try {
     if (req.method === 'GET' && new URL(req.url || '/', 'http://x').searchParams.has('ping')) return res.status(200).json({ ok: true });
-    if (req.method === 'GET') return res.status(200).json(stats(await store.read(false), pool));
+    if (req.method === 'GET') return res.status(200).json(stats(await claimedCount(), pool));
     if (req.method !== 'POST') return res.status(405).json({ ok: false, error: 'method' });
 
     // web gửi text/plain để khỏi preflight CORS, nên body có thể là chuỗi JSON
@@ -121,15 +123,17 @@ export default async function handler(req, res) {
     const ip = String(req.headers['x-forwarded-for'] || '').split(',')[0].trim() || 'unknown';
     if (limited(ip)) return res.status(200).json({ ok: false, error: 'limit' });
 
-    const result = await claim(store, pool, body && body.phone, new Date(), body && body.token);
+    const result = await claim(kv, pool, body && body.phone, new Date(), body && body.token, RESERVED);
+    if (result.ok && !result.again) statsCache = null;
     // trả mã cho khách ngay; ghi Sheet chạy nền sau khi đã trả lời (Vercel giữ hàm sống tới khi xong).
     // Khách lấy lại mã từ máy khác cũng ghi thêm 1 dòng (Sheet tra dòng đầu tiên nên không lệch);
     // chỉ bỏ qua khi chính máy đó thử lại vì mạng rớt, tránh dòng trùng.
     if (result.ok && !(result.again && result.sameDevice)) waitUntil(logToSheet(result.code, normalizePhone(body.phone)));
-    if (!result.ok && result.error === 'busy') return res.status(200).json({ ...result, detail: lastWriteError });
+    if (!result.ok && result.error === 'busy') return res.status(200).json({ ...result, detail: lastError });
     return res.status(200).json(result);
   } catch (err) {
     console.error('claim failed', err);
-    return res.status(200).json({ ok: false, error: 'busy' });
+    lastError = `${err && err.name}: ${err && err.message}`.slice(0, 300);
+    return res.status(200).json({ ok: false, error: 'busy', detail: lastError });
   }
 }
