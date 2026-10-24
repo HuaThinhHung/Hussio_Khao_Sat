@@ -10,7 +10,7 @@
 import { timingSafeEqual } from 'node:crypto';
 import { get, put, list, del } from '@vercel/blob';
 import { waitUntil } from '@vercel/functions';
-import { claim, stats, normalizePhone, P_MAP, P_PHONE, P_CODE, P_SYNC } from './_voucher.js';
+import { claim, stats, normalizePhone, P_MAP } from './_voucher.js';
 import * as sheet from './_sheet.js';
 import { syncEntries, resyncAll, syncStatus } from './_sync.js';
 
@@ -131,19 +131,6 @@ export default async function handler(req, res) {
   try {
     const params = new URL(req.url || '/', 'http://x').searchParams;
     if (req.method === 'GET' && params.has('ping')) return res.status(200).json({ ok: true });
-    // TẠM (24/10/2026): xoá lượt thử của anh Hưng / kỹ thuật theo yêu cầu, trả mã về kho. Gỡ ngay sau khi chạy.
-    if (req.method === 'GET' && params.has('cleanup-test')) {
-      const released = [];
-      for (const p of ['0866865440', '0900000301', '0900000302', '0900000303']) {
-        const rec = await kv.get(P_PHONE + p + '.json');
-        if (!rec || !rec.code) continue;
-        await del([P_PHONE + p + '.json', P_CODE + rec.code + '.json', P_MAP + rec.code + '__' + p, P_SYNC + p + '.json']).catch(() => {});
-        released.push(rec.code);
-      }
-      statsCache = null;
-      const issued = (await kv.list(P_MAP)).map(x => x.slice(P_MAP.length).split('__')).map(([c, ph]) => c + ' · ' + ph.slice(0, 4) + '***' + ph.slice(-3));
-      return res.status(200).json({ ok: true, released, issued, reserved: Object.keys(RESERVED).length });
-    }
     if (params.has('resync') || params.has('sync-status')) {
       if (!isAdmin(req)) return res.status(401).json({ ok: false, error: 'admin' });
       if (params.has('sync-status')) return res.status(200).json({ ok: true, ...(await syncStatus(kv, RESERVED)) });
