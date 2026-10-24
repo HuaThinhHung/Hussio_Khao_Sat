@@ -44,6 +44,7 @@ async function logToSheet(code, phone) {
 // nên giữ bản đọc gần nhất 10 giây. Bản cũ không gây phát trùng: ghi kèm ETag cũ sẽ bị từ chối rồi đọc lại.
 const CACHE_MS = 10_000;
 let cache = null;
+let lastWriteError = '';
 
 const store = {
   async read(fresh) {
@@ -71,6 +72,8 @@ const store = {
       const res = await put(STATE_PATH, JSON.stringify({ resetId: RESET_ID, claims, archived }, null, 1), opts);
       cache = { state: { claims, archived, etag: res.etag }, at: Date.now() };
     } catch (err) {
+      lastWriteError = `${err && err.name}: ${err && err.message}`.slice(0, 300);
+      console.error('blob write failed', lastWriteError);
       // lệch ETag, hoặc 2 khách cùng ghi lần đầu khi chưa có file → đọc lại rồi ghi kèm ETag mới
       if (err instanceof BlobPreconditionFailedError || !etag) err.conflict = true;
       throw err;
@@ -123,6 +126,7 @@ export default async function handler(req, res) {
     // Khách lấy lại mã từ máy khác cũng ghi thêm 1 dòng (Sheet tra dòng đầu tiên nên không lệch);
     // chỉ bỏ qua khi chính máy đó thử lại vì mạng rớt, tránh dòng trùng.
     if (result.ok && !(result.again && result.sameDevice)) waitUntil(logToSheet(result.code, normalizePhone(body.phone)));
+    if (!result.ok && result.error === 'busy') return res.status(200).json({ ...result, detail: lastWriteError });
     return res.status(200).json(result);
   } catch (err) {
     console.error('claim failed', err);
