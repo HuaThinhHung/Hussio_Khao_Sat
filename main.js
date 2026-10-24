@@ -291,14 +291,20 @@ submitBtn.addEventListener('click', async () => {
 
 // mở lại / tải lại trang sau khi đã nhận mã: lấy lại mã hiện tại từ máy chủ, không tạo mã mới
 (async () => {
+  await new Promise(r => setTimeout(r, 0));   // chờ cả file chạy xong (THANKS_DESC, retryBtn khai báo phía dưới)
   const saved = savedClaim();
   if (!saved || !saved.phone) return;
+  // hiện ngay mã đã lưu (máy chủ có lúc khởi động chậm vài giây), rồi hỏi máy chủ để xác nhận
+  if (saved.code) showThanks('again', saved.code);
   const r = await claimVoucher(saved.phone, true);   // chỉ tra, không bao giờ xin mã mới
   if (r.ok && r.code) {
     try { localStorage.setItem(CLAIM_KEY, JSON.stringify({ code: r.code, phone: saved.phone })); } catch {}
-    showThanks('again', r.code);
+    if (r.code !== saved.code) showThanks('again', r.code);   // máy chủ là nguồn sự thật
   } else if (r.error === 'none') {
-    try { localStorage.removeItem(CLAIM_KEY); } catch {}   // mã cũ không còn trên máy chủ: cho làm khảo sát như khách mới
+    // mã cũ không còn trên máy chủ: đóng màn cảm ơn, cho làm khảo sát như khách mới
+    try { localStorage.removeItem(CLAIM_KEY); } catch {}
+    document.getElementById('thanks').classList.remove('show');
+    document.body.style.overflow = '';
   }
 })();
 
