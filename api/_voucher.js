@@ -81,6 +81,17 @@ export async function allIssued(kv, reserved = {}) {
   return [...out.values()];
 }
 
+// cho bảng xuất Sheet: kv.listDetailed(prefix) → [{ pathname, uploadedAt }]; giờ tạo file map = giờ phát mã.
+// 1 lệnh list cho toàn bộ (không đọc từng file) để giữ trong hạn mức Blob gói Hobby.
+export async function issuedWithTime(kv, reserved = {}, reservedAt = {}) {
+  const out = new Map(Object.entries(reserved).map(([phone, code]) => [code, { code, phone, at: reservedAt[phone] || '', source: 'CSKH' }]));
+  for (const b of await kv.listDetailed(P_MAP)) {
+    const [code, phone] = b.pathname.slice(P_MAP.length).split('__');
+    if (code && phone && !out.has(code)) out.set(code, { code, phone, at: new Date(b.uploadedAt).toISOString(), source: 'WEB' });
+  }
+  return [...out.values()].sort((a, b) => (a.at < b.at ? -1 : 1));
+}
+
 export function stats(claimed, codes) {
   return { ok: true, claimed, remaining: Math.max(codes.length - claimed, 0), total: codes.length };
 }

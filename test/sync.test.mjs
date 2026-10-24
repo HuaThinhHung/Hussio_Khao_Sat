@@ -77,3 +77,18 @@ test('vnTime đổi sang giờ Việt Nam', () => {
   assert.equal(vnTime('2026-10-19T17:30:00Z'), '20/10/2026 00:30');
   assert.equal(vnTime(''), '');
 });
+
+test('bảng xuất Sheet: đúng mã ↔ SĐT ↔ giờ, mã giữ chỗ có nguồn CSKH, SĐT giữ số 0 đầu, khoá không phụ thuộc thứ tự mã', async () => {
+  const { issuedWithTime } = await import('../api/_voucher.js');
+  const { exportCsv, exportKey } = await import('../api/_sheet.js');
+  const kv = memoryKv();
+  kv.listDetailed = async pre => [...kv.m.keys()].filter(k => k.startsWith(pre)).map(pathname => ({ pathname, uploadedAt: '2026-10-24T05:07:00Z' }));
+  const r = await claim(kv, CODES, '0912345678', new Date(), '', RES);
+  const rows = await issuedWithTime(kv, RES, AT);
+  assert.deepEqual(rows.map(x => [x.code, x.phone, x.source]), [[CODES[0], '0866865440', 'CSKH'], [r.code, '0912345678', 'WEB']]);
+  const csv = exportCsv(rows).trim().split('\n');
+  assert.equal(csv[0], 'Mã,SĐT,Thời gian nhận,Nguồn');
+  assert.equal(csv[2], `${r.code},0912-345-678,24/10/2026 12:07,WEB`);
+  assert.equal(exportKey(CODES), exportKey([...CODES].reverse()));
+  assert.equal(exportKey(CODES).length, 32);
+});

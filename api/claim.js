@@ -2,6 +2,7 @@
 //                  | { ok: false, error: phone|ended|soldout|busy|limit }   (SĐT đã nhận → again: true, cùng mã cũ)
 // GET  /api/claim            → số mã đã phát / còn lại (không lộ SĐT, mã).
 // GET  /api/claim?ping=1     → { ok: true }: web gọi khi khách mở trang để máy chủ khởi động sẵn, không đọc kho.
+// GET  /api/claim?export=csv&key=… → bảng Mã,SĐT,Thời gian nhận,Nguồn cho Google Sheet (IMPORTDATA).
 // GET  /api/claim?sync-status | ?resync[&force=1]   (cần quyền quản trị, xem isAdmin)
 //      sync-status: đếm SYNCED / PENDING / FAILED / NEEDS_REVIEW; resync: ghi lại Sheet các mã chưa SYNCED.
 // Chạy ở vùng sin1 (vercel.json), cùng vùng với kho Blob.
@@ -10,7 +11,7 @@
 import { timingSafeEqual } from 'node:crypto';
 import { get, put, list, del } from '@vercel/blob';
 import { waitUntil } from '@vercel/functions';
-import { claim, stats, normalizePhone, P_MAP } from './_voucher.js';
+import { claim, stats, normalizePhone, issuedWithTime, P_MAP } from './_voucher.js';
 import * as sheet from './_sheet.js';
 import { syncEntries, resyncAll, syncStatus } from './_sync.js';
 
@@ -75,6 +76,16 @@ const kv = {
     } while (cursor);
     return out;
   },
+  async listDetailed(prefix) {
+    const out = [];
+    let cursor;
+    do {
+      const r = await list({ prefix, cursor, limit: 1000 });
+      out.push(...r.blobs.map(b => ({ pathname: b.pathname, uploadedAt: b.uploadedAt })));
+      cursor = r.hasMore ? r.cursor : undefined;
+    } while (cursor);
+    return out;
+  },
   remove: path => del(path)
 };
 
@@ -131,6 +142,14 @@ export default async function handler(req, res) {
   try {
     const params = new URL(req.url || '/', 'http://x').searchParams;
     if (req.method === 'GET' && params.has('ping')) return res.status(200).json({ ok: true });
+    // bảng Mã/SĐT/Thời gian cho Google Sheet (IMPORTDATA). Sai khoá → 401. CDN giữ 5 phút để Google tải lại
+    // nhiều lần cũng chỉ tốn ít lượt list Blob.
+    if (req.method === 'GET' && params.get('export') === 'csv') {
+      if (!same(params.get('key'), sheet.exportKey(pool))) return res.status(401).json({ ok: false, error: 'key' });
+      res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+      res.setHeader('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=60');
+      return res.status(200).send(sheet.exportCsv(await issuedWithTime(kv, RESERVED, RESERVED_AT)));
+    }
     if (params.has('resync') || params.has('sync-status')) {
       if (!isAdmin(req)) return res.status(401).json({ ok: false, error: 'admin' });
       if (params.has('sync-status')) return res.status(200).json({ ok: true, ...(await syncStatus(kv, RESERVED)) });
@@ -153,7 +172,10 @@ export default async function handler(req, res) {
       statsCache = null;
       const phone = normalizePhone(body.phone);
       waitUntil(Promise.all([
-        syncEntries(kv, [{ code: result.code, phone, at: now.toISOString() }], sheet).catch(err => console.error('sheet sync failed', err)),
+        // ghi thẳng bằng Sheets API chỉ khi đã có khoá Google; không có thì Sheet vẫn tự kéo qua ?export=csv
+        process.env.GOOGLE_SERVICE_ACCOUNT_JSON
+          ? syncEntries(kv, [{ code: result.code, phone, at: now.toISOString() }], sheet).catch(err => console.error('sheet sync failed', err))
+          : null,
         mirrorToForm(result.code, phone)
       ]));
     }

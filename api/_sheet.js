@@ -5,7 +5,7 @@
 //   nên ghi lại bao nhiêu lần cũng không sinh dòng trùng.
 // Cần env GOOGLE_SERVICE_ACCOUNT_JSON (nguyên file JSON khoá của tài khoản dịch vụ), và Sheet phải được
 // chia sẻ quyền Người chỉnh sửa cho client_email trong file đó. Thiếu → báo lỗi, bản ghi ở trạng thái PENDING.
-import { createSign } from 'node:crypto';
+import { createSign, createHash } from 'node:crypto';
 
 export const SHEET_ID = '1tH7I4eZ0T0KN49zC-ydSVGHmpxhOgwCdsI_LsFYLYC0';
 export const TAB = 'Kho mã';
@@ -63,8 +63,9 @@ export async function writeRows(rows) {
   ]);
   // cột B/C cũ là ARRAYFORMULA tra theo tab "Câu trả lời biểu mẫu 1" (tab này CSKH đã đổi thành bảng tay nên
   // công thức ra rỗng). Ghi thẳng giá trị thì phải bỏ công thức tràn, nếu không ô ghi vào sẽ báo #REF.
+  // Kho mã đang tra SĐT bằng công thức từ tab "WEB tự động" (IMPORTDATA, xem exportCsv) thì không ghi đè lên công thức
   const f = (head.values && head.values[0]) || [];
-  if (f.some(v => String(v).startsWith('='))) await call('/values/' + q('B2:C2') + ':clear', { method: 'POST', body: '{}' });
+  if (f.some(v => String(v).startsWith('='))) throw new Error('Kho mã đang dùng công thức IMPORTDATA, không ghi đè');
 
   const rowOf = new Map(((colA.values) || []).map((r, i) => [String(r[0] || '').trim(), i + 2]));
   const data = [], done = [], missing = [];
@@ -84,4 +85,19 @@ export async function readRows() {
   const out = {};
   for (const [code, phone, time] of j.values || []) if (code && phone) out[code] = { phone: String(phone), time: time || '' };
   return out;
+}
+
+// Cách đồng bộ chính (không cần khoá Google): tab "WEB tự động" của Sheet có =IMPORTDATA("…/api/claim?export=csv&key=…"),
+// Google tự tải lại định kỳ; tab Kho mã tra SĐT + thời gian theo mã từ tab đó.
+// Khoá suy ra từ danh sách 300 mã (env KS20_CODES, vốn bí mật) nên không thêm biến môi trường, không lộ trong repo.
+export function exportKey(codes) {
+  return createHash('sha256').update('hussio-ks20-sheet|' + [...codes].sort().join(',')).digest('hex').slice(0, 32);
+}
+
+const cell = v => (/[",\n]/.test(String(v)) ? '"' + String(v).replace(/"/g, '""') + '"' : String(v));
+// SĐT ghi dạng 0xxx-xxx-xxx để Google không đổi thành số (mất số 0 đầu); công thức Kho mã bỏ dấu gạch khi tra.
+export function exportCsv(rows) {
+  const lines = [['Mã', 'SĐT', 'Thời gian nhận', 'Nguồn'].join(',')];
+  for (const r of rows) lines.push([r.code, r.phone.replace(/^(\d{4})(\d{3})(\d{3})$/, '$1-$2-$3'), vnTime(r.at), r.source].map(cell).join(','));
+  return lines.join('\n') + '\n';
 }
