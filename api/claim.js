@@ -9,7 +9,7 @@
 // Blob vẫn là nguồn chống trùng; Sheet chỉ là bản để xem.
 import { get, put, list, del } from '@vercel/blob';
 import { waitUntil } from '@vercel/functions';
-import { claim, stats, normalizePhone, P_PHONE } from './_voucher.js';
+import { claim, stats, normalizePhone, P_PHONE, P_CODE } from './_voucher.js';
 
 // Mã đã phát ngoài kho v2: lượt cũ còn hiệu lực ở kho v1 (ks20/claims.json, giữ nguyên làm lưu trữ)
 // và mã CSKH gửi tay theo Sheet ngày 24/10/2026. Các SĐT này nhập lại sẽ thấy đúng mã cũ; các mã này không phát lại.
@@ -115,6 +115,18 @@ export default async function handler(req, res) {
 
   try {
     if (req.method === 'GET' && new URL(req.url || '/', 'http://x').searchParams.has('ping')) return res.status(200).json({ ok: true });
+    // tạm thời (24/10/2026): xoá các lượt thử của kỹ thuật lúc sửa lỗi, trả mã về kho. Chỉ đụng các SĐT thử dưới đây.
+    if (req.method === 'GET' && new URL(req.url || '/', 'http://x').searchParams.has('cleanup-test')) {
+      const done = [];
+      for (const p of ['0900000009', '0900000091', '0900000092', '0900000093', '0900000101', '0900000102', '0900000103', '0900000104', '0900000105', '0900000199', '0900000201', '0900000202', '0900000203']) {
+        const rec = await kv.get(P_PHONE + p + '.json');
+        if (!rec || !rec.code) continue;
+        await del([P_PHONE + p + '.json', P_CODE + rec.code + '.json']);
+        done.push(rec.code);
+      }
+      statsCache = null;
+      return res.status(200).json({ ok: true, released: done });
+    }
     if (req.method === 'GET') return res.status(200).json(stats(await claimedCount(), pool));
     if (req.method !== 'POST') return res.status(405).json({ ok: false, error: 'method' });
 
