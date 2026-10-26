@@ -150,15 +150,6 @@ export default async function handler(req, res) {
   try {
     const params = new URL(req.url || '/', 'http://x').searchParams;
     if (req.method === 'GET' && params.has('ping')) return res.status(200).json({ ok: true });
-    // TẠM (26/10/2026): ghi bù 1 lần mọi mã đã phát vào form (tab WEB của Sheet), giữ đúng giờ nhận gốc.
-    // File đánh dấu chỉ tạo được 1 lần → gọi lại không sinh dòng trùng. Gỡ ngay sau khi chạy.
-    if (req.method === 'GET' && params.has('backfill-form')) {
-      if (!(await kv.create('ks20/v2/form-backfill-2026-10-26.json', { at: new Date().toISOString() }))) return res.status(200).json({ ok: false, error: 'already' });
-      const rows = await issuedWithTime(kv, RESERVED, RESERVED_AT);
-      let sent = 0, failed = [];
-      for (const r of rows) { if (await mirrorToForm(r.code, r.phone, r.at)) sent++; else failed.push(r.code); }
-      return res.status(200).json({ ok: true, total: rows.length, sent, failed });
-    }
     // bảng Mã/SĐT/Thời gian cho Google Sheet (IMPORTDATA). Sai khoá → 401. CDN giữ 5 phút để Google tải lại
     // nhiều lần cũng chỉ tốn ít lượt list Blob.
     if (req.method === 'GET' && params.get('export') === 'csv') {
