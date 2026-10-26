@@ -274,16 +274,16 @@ submitBtn.addEventListener('click', async () => {
     try { localStorage.setItem(CLAIM_KEY, JSON.stringify({ code: r.code, phone })); } catch {}
     // SĐT đã nhận từ máy khác: hiện lại đúng mã cũ, không gửi phản hồi khảo sát trùng
     const reused = r.again && !r.sameDevice;
-    if (!reused) sendToGoogle();
+    if (!reused) sendToGoogle(r.code, phone);
     showThanks(reused ? 'used' : 'ok', r.code);
   } else if (r.error === 'phone') {
     showPhoneError('Số điện thoại chưa đúng, anh/chị kiểm tra lại giúp HUSSIO nhé.');
   } else if (r.error === 'soldout' || r.error === 'ended') {
-    sendToGoogle();
+    sendToGoogle('', phone);
     showThanks('soldout');
   } else {
     // mạng lỗi: vẫn ghi phản hồi; máy chủ có thể đã phát mã, nút "Thử lại lấy mã" lấy lại bằng token của máy này
-    sendToGoogle();
+    sendToGoogle('', phone);   // chưa có mã: CSKH tra theo SĐT ở tab WEBSITE của Sheet
     pendingPhone = phone;
     showThanks('fallback');
   }
@@ -330,18 +330,26 @@ retryBtn.addEventListener('click', async () => {
   }
 });
 
-function sendToGoogle() {
+// 2 câu cuối form khảo sát (thêm 26/10/2026, không bắt buộc, khách không thấy trên web):
+// gửi cùng lúc với 12 câu trả lời để 1 dòng câu trả lời có đủ câu trả lời + mã + SĐT
+const GFORM_CODE = 'entry.931228951';
+const GFORM_PHONE = 'entry.364524952';
+
+function sendToGoogle(code = '', phone = '') {
   try {
     const f = document.createElement('form');
     f.action = GFORM; f.method = 'POST'; f.target = 'gform_sink'; f.style.display = 'none';
+    const add = (name, value) => {
+      const inp = document.createElement('input');
+      inp.type = 'hidden'; inp.name = name; inp.value = value;
+      f.appendChild(inp);
+    };
     QUESTIONS.forEach((q, i) => {
       const sel = document.querySelector(`input[name="q${i}"]:checked`);
-      if (sel) {
-        const inp = document.createElement('input');
-        inp.type = 'hidden'; inp.name = q.e; inp.value = sel.value;
-        f.appendChild(inp);
-      }
+      if (sel) add(q.e, sel.value);
     });
+    if (code) add(GFORM_CODE, code);
+    if (phone) add(GFORM_PHONE, phone);
     document.body.appendChild(f);
     f.submit();
     setTimeout(() => f.remove(), 2000);
