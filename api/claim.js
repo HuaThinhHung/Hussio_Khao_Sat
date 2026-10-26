@@ -11,7 +11,7 @@
 import { timingSafeEqual } from 'node:crypto';
 import { get, put, list, del } from '@vercel/blob';
 import { waitUntil } from '@vercel/functions';
-import { claim, stats, normalizePhone, issuedWithTime, P_MAP } from './_voucher.js';
+import { claim, stats, normalizePhone, issuedWithTime, P_MAP, P_PHONE, P_CODE, P_SYNC } from './_voucher.js';
 import * as sheet from './_sheet.js';
 import { syncEntries, resyncAll, syncStatus } from './_sync.js';
 
@@ -144,6 +144,18 @@ export default async function handler(req, res) {
   try {
     const params = new URL(req.url || '/', 'http://x').searchParams;
     if (req.method === 'GET' && params.has('ping')) return res.status(200).json({ ok: true });
+    // TẠM (26/10/2026): xoá mã test 0900000307. Gỡ ngay sau khi chạy.
+    if (req.method === 'GET' && params.has('cleanup-test')) {
+      const released = [];
+      for (const p of ['0900000307']) {
+        const rec = await kv.get(P_PHONE + p + '.json');
+        if (!rec || !rec.code) continue;
+        await del([P_PHONE + p + '.json', P_CODE + rec.code + '.json', P_MAP + rec.code + '__' + p, P_SYNC + p + '.json']).catch(() => {});
+        released.push(rec.code);
+      }
+      statsCache = null;
+      return res.status(200).json({ ok: true, released });
+    }
     // bảng Mã/SĐT/Thời gian cho Google Sheet (IMPORTDATA). Sai khoá → 401. CDN giữ 5 phút để Google tải lại
     // nhiều lần cũng chỉ tốn ít lượt list Blob.
     if (req.method === 'GET' && params.get('export') === 'csv') {
