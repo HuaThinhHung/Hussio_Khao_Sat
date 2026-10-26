@@ -33,11 +33,13 @@ const ORIGINS = [
   /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/
 ];
 
-// Form ẩn "Sổ phát voucher" chỉ còn là bản soi tuỳ chọn (bật bằng env LOG_FORM_MIRROR=1).
-// Từ 24/10/2026 form này trả 401 và tab nhận của nó đã thành bảng CSKH nhập tay, nên mặc định tắt.
+// Form ẩn "Sổ phát voucher": mỗi mã mới gửi ngay Mã + SĐT vào form, form đổ vào tab "Câu trả lời biểu mẫu 2"
+// của Sheet data khách (đổi đích 26/10/2026) → CSKH thấy khách ngay, không chờ IMPORTDATA ~1 giờ.
+// Form phải để Người trả lời "Bất kỳ ai có đường liên kết", nếu không Google trả 401 (lỗi chỉ ghi log, khách vẫn có mã).
+// Tắt bằng env LOG_FORM_MIRROR=0.
 const LOG_FORM = 'https://docs.google.com/forms/d/e/1FAIpQLSd5jNwiQDPCL0h3v7uMFkHdViMFl8inid_u5-Ga9677sxxSnA/formResponse';
 async function mirrorToForm(code, phone) {
-  if (process.env.LOG_FORM_MIRROR !== '1') return;
+  if (process.env.LOG_FORM_MIRROR === '0') return;
   try {
     const res = await fetch(LOG_FORM, { method: 'POST', body: new URLSearchParams({ 'entry.1391917465': code, 'entry.1294366895': phone }), signal: AbortSignal.timeout(5000) });
     if (!res.ok) console.error('form mirror failed', res.status, code);
