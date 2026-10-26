@@ -38,12 +38,18 @@ const ORIGINS = [
 // Form phải để Người trả lời "Bất kỳ ai có đường liên kết", nếu không Google trả 401 (lỗi chỉ ghi log, khách vẫn có mã).
 // Tắt bằng env LOG_FORM_MIRROR=0.
 const LOG_FORM = 'https://docs.google.com/forms/d/e/1FAIpQLSd5jNwiQDPCL0h3v7uMFkHdViMFl8inid_u5-Ga9677sxxSnA/formResponse';
-async function mirrorToForm(code, phone) {
-  if (process.env.LOG_FORM_MIRROR === '0') return;
+// 3 câu của form: Mã voucher, Số điện thoại, Thời gian nhận (giờ VN lúc máy chủ phát mã, thêm 26/10/2026)
+async function mirrorToForm(code, phone, at) {
+  if (process.env.LOG_FORM_MIRROR === '0') return false;
   try {
-    const res = await fetch(LOG_FORM, { method: 'POST', body: new URLSearchParams({ 'entry.1391917465': code, 'entry.1294366895': phone }), signal: AbortSignal.timeout(5000) });
+    const res = await fetch(LOG_FORM, {
+      method: 'POST',
+      body: new URLSearchParams({ 'entry.1391917465': code, 'entry.1294366895': phone, 'entry.311696546': sheet.vnTime(at) }),
+      signal: AbortSignal.timeout(5000)
+    });
     if (!res.ok) console.error('form mirror failed', res.status, code);
-  } catch (err) { console.error('form mirror failed', code, err); }
+    return res.ok;
+  } catch (err) { console.error('form mirror failed', code, err); return false; }
 }
 
 // Gói Hobby: Blob bị khoá 30 ngày nếu vượt 10.000 lượt đọc / 2.000 lượt ghi mỗi tháng.
@@ -144,6 +150,15 @@ export default async function handler(req, res) {
   try {
     const params = new URL(req.url || '/', 'http://x').searchParams;
     if (req.method === 'GET' && params.has('ping')) return res.status(200).json({ ok: true });
+    // TẠM (26/10/2026): ghi bù 1 lần mọi mã đã phát vào form (tab WEB của Sheet), giữ đúng giờ nhận gốc.
+    // File đánh dấu chỉ tạo được 1 lần → gọi lại không sinh dòng trùng. Gỡ ngay sau khi chạy.
+    if (req.method === 'GET' && params.has('backfill-form')) {
+      if (!(await kv.create('ks20/v2/form-backfill-2026-10-26.json', { at: new Date().toISOString() }))) return res.status(200).json({ ok: false, error: 'already' });
+      const rows = await issuedWithTime(kv, RESERVED, RESERVED_AT);
+      let sent = 0, failed = [];
+      for (const r of rows) { if (await mirrorToForm(r.code, r.phone, r.at)) sent++; else failed.push(r.code); }
+      return res.status(200).json({ ok: true, total: rows.length, sent, failed });
+    }
     // bảng Mã/SĐT/Thời gian cho Google Sheet (IMPORTDATA). Sai khoá → 401. CDN giữ 5 phút để Google tải lại
     // nhiều lần cũng chỉ tốn ít lượt list Blob.
     if (req.method === 'GET' && params.get('export') === 'csv') {
@@ -178,7 +193,7 @@ export default async function handler(req, res) {
         process.env.GOOGLE_SERVICE_ACCOUNT_JSON
           ? syncEntries(kv, [{ code: result.code, phone, at: now.toISOString() }], sheet).catch(err => console.error('sheet sync failed', err))
           : null,
-        mirrorToForm(result.code, phone)
+        mirrorToForm(result.code, phone, now.toISOString())
       ]));
     }
     const { isNew, ...out } = result;
